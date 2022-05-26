@@ -1,0 +1,103 @@
+<resources>
+    <string name="app_name">MKNBPLUGHEX</string>
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="save">Save</string>
+    <string name="mqtt_connecting">Connecting...</string>
+    <string name="mqtt_connect_failed">Connect Failed</string>
+    <string name="network_error">Network error,please check.</string>
+    <string name="device_offline">Device is offline,pleaese check!</string>
+    <string name="main_welcome">Start your smart life</string>
+    <string name="main_add_device">Add Devices</string>
+    <string name="add_device_title">Add Device</string>
+    <string name="setting_syncing">syncing</string>
+
+    <string name="password_null">Password cannot be empty!</string>
+    <string name="mqtt_host">Host</string>
+    <string name="mqtt_port">Port</string>
+    <string name="mqtt_clean_session">Clean Session</string>
+    <string name="mqtt_connct_mode_tcp">TCP</string>
+    <string name="mqtt_qos">Qos</string>
+    <string name="mqtt_keep_alive">Keep Alive</string>
+    <string name="mqtt_device_id">Device Id</string>
+    <string name="mqtt_client_id">Client Id</string>
+    <string name="mqtt_topic_subscribe">Subscribed Topic</string>
+    <string name="mqtt_topic_publish">Published Topic</string>
+    <string name="mqtt_username">Username</string>
+    <string name="mqtt_Password">Password</string>
+    <string name="mqtt_verify_client_id_empty">ClientId error</string>
+    <string name="mqtt_verify_device_id_empty">DeivceId error</string>
+    <string name="mqtt_verify_host">Host error</string>
+    <string name="mqtt_verify_port">Port range is 0~65535</string>
+    <string name="mqtt_verify_port_empty">Port error</string>
+    <string name="mqtt_verify_file_path">File Path error</string>
+    <string name="mqtt_verify_ca">CA error</string>
+    <string name="mqtt_verify_topic_subscribe">Subscribed Topic error</string>
+    <string name="mqtt_verify_topic_publish">Published Topic error</string>
+    <string name="mqtt_verify_client_key">Client Key error</string>
+    <string name="mqtt_verify_client_cert">Client Cert error</string>
+    <string name="success">Success</string>
+    <string name="update_success">Update Success</string>
+    <string name="update_failed">Update Failed</string>
+    <string name="mqtt_connecting_title">Connecting now</string>
+    <string name="mqtt_connecting_content">Make sure your phone and device are \nas close to your router as possible.</string>
+    <string name="mqtt_connecting_timeout">Connect timeout</string>
+
+    <string name="modify_device_name_conn_success">Connection successful</string>
+    <string name="modify_device_name_done">Done</string>
+    <string name="modify_device_name_empty">Device name can\'t be blank</string>
+
+
+    <string name="permission_storage_close_title">Storage permission is not available</string>
+    <string name="permission_storage_close_content">Please find it in cellphone setting- permission, and allow MKNBPLUGHEX use the Storage permission</string>
+    <string name="permission_storage_need_title">Please turn on Storage permissions</string>
+    <string name="permission_storage_need_content">MKNBPLUGHEX requires access to Storage permission. If the permissions are not on, MKNBPLUGHEX cannot be used normally.</string>
+
+    <string name="more_modify_name_tips">Device name can\'t be blank</string>
+
+    <string name="device_info_title">Device Information</string>
+    <string name="device_info_manufacturer">Manufacturer</string>
+    <string name="device_info_date">Date of Manufacture</string>
+    <string name="device_info_product_model">Product Model</string>
+    <string name="device_info_hardware_version">Hardware Version</string>
+    <string name="device_info_firmware_version">Firmware Version</string>
+
+    <string name="ensure">OK</string>
+    <string name="permission_open">OK</string>
+    <string name="location_need_title">Turn on Location permission</string>
+    <string name="location_need_content">After that, MKNBPLUGHEX could search the wifi</string>
+    <string name="permission_location_close_title">Location persission is not available</string>
+    <string name="permission_location_close_content">Please find it in cellphone setting- permission, and allow MKNBPLUGHEX use the Location and Storage permission</string>
+    <string name="permission_location_need_title">Turn on Location permission</string>
+    <string name="permission_location_need_content">After that, MKNBPLUGHEX could search the wifi</string>
+    <string name="version_info">Version:%s</string>
+    <string name="about_moko_name">MOKO TECHNOLOGY LTD.</string>
+    <string name="company_website">www.mokosmart.com</string>
+
+    <string name="main_exit_tips">Are you sure you want to quit?</string>
+    <string name="switch_on">ON</string>
+    <string name="switch_off">OFF</string>
+    <string name="device_state_offline">Offline</string>
+
+    <string name="plug_switch_off">Socket is off</string>
+    <string name="plug_switch_offline">Socket is offline</string>
+    <string name="plug_switch_on">Socket is on</string>
+    <string name="plug_power">Power</string>
+    <string name="plug_timer">Timer</string>
+    <string name="plug_energy">Energy</string>
+    <string name="countdown_timer_on">Countdown timer (on)</string>
+    <string name="countdown_timer_off">Countdown timer (off)</string>
+
+    <string name="electricity_title">Electricity Management</string>
+    <string-array name="indicator_color">
+        <item>Active power indicator with color direct transition</item>
+        <item>Active power indicator with color smooth transition</item>
+        <item>White</item>
+        <item>Red</item>
+        <item>Green</item>
+        <item>Blue</item>
+        <item>Orange</item>
+        <item>Cyan</item>
+        <item>Purple</item>
+    </string-array>
+</resources>

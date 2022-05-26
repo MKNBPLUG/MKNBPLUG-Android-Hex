@@ -1,0 +1,216 @@
+package com.moko.mknbplughex.activity;
+
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
+import android.view.View;
+import android.widget.EditText;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
+import com.moko.mknbplughex.AppConstants;
+import com.moko.mknbplughex.R;
+import com.moko.mknbplughex.R2;
+import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.entity.MokoDevice;
+import com.moko.mknbplughex.utils.SPUtiles;
+import com.moko.mknbplughex.utils.ToastUtils;
+import com.moko.support.hex.MQTTConstants;
+import com.moko.support.hex.MQTTMessageAssembler;
+import com.moko.support.hex.MQTTSupport;
+import com.moko.support.hex.entity.DeviceParams;
+import com.moko.support.hex.entity.MQTTConfig;
+import com.moko.support.hex.entity.MsgCommon;
+import com.moko.support.hex.entity.OverloadOccur;
+import com.moko.support.hex.entity.ReportInterval;
+import com.moko.support.hex.event.DeviceOnlineEvent;
+import com.moko.support.hex.event.MQTTMessageArrivedEvent;
+
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
+import java.lang.reflect.Type;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
+
+public class PeriodicalReportActivity extends BaseActivity {
+
+
+    @BindView(R2.id.et_switch_report_interval)
+    EditText etSwitchReportInterval;
+    @BindView(R2.id.et_countdown_report_interval)
+    EditText etCountdownReportInterval;
+    private MQTTConfig appMqttConfig;
+    private MokoDevice mMokoDevice;
+    private Handler mHandler;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_periodical_report);
+        ButterKnife.bind(this);
+        String mqttConfigAppStr = SPUtiles.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
+        appMqttConfig = new Gson().fromJson(mqttConfigAppStr, MQTTConfig.class);
+        mMokoDevice = (MokoDevice) getIntent().getSerializableExtra(AppConstants.EXTRA_KEY_DEVICE);
+        mHandler = new Handler(Looper.getMainLooper());
+        showLoadingProgressDialog();
+        mHandler.postDelayed(() -> {
+            dismissLoadingProgressDialog();
+            finish();
+        }, 30 * 1000);
+        getPeriodicalReport();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMQTTMessageArrivedEvent(MQTTMessageArrivedEvent event) {
+        // 更新所有设备的网络状态
+        final String topic = event.getTopic();
+        final String message = event.getMessage();
+        if (TextUtils.isEmpty(message))
+            return;
+        MsgCommon<JsonObject> msgCommon;
+        try {
+            Type type = new TypeToken<MsgCommon<JsonObject>>() {
+            }.getType();
+            msgCommon = new Gson().fromJson(message, type);
+        } catch (Exception e) {
+            return;
+        }
+        if (!mMokoDevice.deviceId.equals(msgCommon.device_info.device_id)) {
+            return;
+        }
+        mMokoDevice.isOnline = true;
+        if (msgCommon.msg_id == MQTTConstants.READ_MSG_ID_REPORT_INTERVAL) {
+            if (mHandler.hasMessages(0)) {
+                dismissLoadingProgressDialog();
+                mHandler.removeMessages(0);
+            }
+            if (msgCommon.result_code != 0)
+                return;
+            Type type = new TypeToken<ReportInterval>() {
+            }.getType();
+            ReportInterval reportInterval = new Gson().fromJson(msgCommon.data, type);
+            etSwitchReportInterval.setText(String.valueOf(reportInterval.switch_interval));
+            etCountdownReportInterval.setText(String.valueOf(reportInterval.countdown_interval));
+        }
+        if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_REPORT_INTERVAL) {
+            if (mHandler.hasMessages(0)) {
+                dismissLoadingProgressDialog();
+                mHandler.removeMessages(0);
+            }
+            if (msgCommon.result_code != 0) {
+                ToastUtils.showToast(this, "Set up failed");
+                return;
+            }
+            ToastUtils.showToast(this, "Set up succeed");
+        }
+        if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
+                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
+                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
+                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
+            Type infoType = new TypeToken<OverloadOccur>() {
+            }.getType();
+            OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
+            if (overloadOccur.state == 1)
+                finish();
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
+        String deviceId = event.getDeviceId();
+        if (!mMokoDevice.deviceId.equals(deviceId)) {
+            return;
+        }
+        boolean online = event.isOnline();
+        if (!online)
+            finish();
+    }
+
+    public void onBack(View view) {
+        finish();
+    }
+
+
+    private void getPeriodicalReport() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        DeviceParams deviceParams = new DeviceParams();
+        deviceParams.device_id = mMokoDevice.deviceId;
+        deviceParams.mac = mMokoDevice.mac;
+        String message = MQTTMessageAssembler.assembleReadReportInterval(deviceParams);
+        try {
+            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_REPORT_INTERVAL, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setPeriodicalReport(int switchInterval, int CountdownInterval) {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        DeviceParams deviceParams = new DeviceParams();
+        deviceParams.device_id = mMokoDevice.deviceId;
+        deviceParams.mac = mMokoDevice.mac;
+        ReportInterval reportInterval = new ReportInterval();
+        reportInterval.switch_interval = switchInterval;
+        reportInterval.countdown_interval = CountdownInterval;
+        String message = MQTTMessageAssembler.assembleWriteReportInterval(deviceParams, reportInterval);
+        try {
+            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_REPORT_INTERVAL, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void onSave(View view) {
+        if (isWindowLocked())
+            return;
+        if (!MQTTSupport.getInstance().isConnected()) {
+            ToastUtils.showToast(this, R.string.network_error);
+            return;
+        }
+        if (isValid()) {
+            String switchIntervalStr = etSwitchReportInterval.getText().toString();
+            String countdownIntervalStr = etCountdownReportInterval.getText().toString();
+            int switchInterval = Integer.parseInt(switchIntervalStr);
+            int countdownInterval = Integer.parseInt(countdownIntervalStr);
+            showLoadingProgressDialog();
+            mHandler.postDelayed(() -> {
+                dismissLoadingProgressDialog();
+                ToastUtils.showToast(this, "Set up failed");
+            }, 30 * 1000);
+            setPeriodicalReport(switchInterval, countdownInterval);
+        } else {
+            ToastUtils.showToast(this, "Para Error");
+        }
+    }
+
+    private boolean isValid() {
+        String switchIntervalStr = etSwitchReportInterval.getText().toString();
+        String countdownIntervalStr = etCountdownReportInterval.getText().toString();
+        if (TextUtils.isEmpty(switchIntervalStr) || TextUtils.isEmpty(countdownIntervalStr)) {
+            return false;
+        }
+        int switchInterval = Integer.parseInt(switchIntervalStr);
+        if ((switchInterval != 0 && switchInterval < 10) || switchInterval > 86400)
+            return false;
+        int countdownInterval = Integer.parseInt(countdownIntervalStr);
+        if ((countdownInterval != 0 && countdownInterval < 10) || countdownInterval > 86400)
+            return false;
+        return true;
+    }
+}
