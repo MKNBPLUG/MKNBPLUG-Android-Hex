@@ -17,10 +17,9 @@ import android.widget.RelativeLayout;
 
 import com.elvishew.xlog.XLog;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
 import com.moko.ble.lib.MokoConstants;
 import com.moko.ble.lib.event.ConnectStatusEvent;
+import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.R2;
@@ -36,10 +35,6 @@ import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.MokoSupport;
-import com.moko.support.hex.entity.ButtonControlEnable;
-import com.moko.support.hex.entity.DeviceParams;
-import com.moko.support.hex.entity.MsgCommon;
-import com.moko.support.hex.entity.OverloadOccur;
 import com.moko.support.hex.event.DeviceDeletedEvent;
 import com.moko.support.hex.event.DeviceModifyNameEvent;
 import com.moko.support.hex.event.DeviceOnlineEvent;
@@ -50,7 +45,7 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.lang.reflect.Type;
+import java.util.Arrays;
 
 import androidx.annotation.Nullable;
 import butterknife.BindView;
@@ -63,6 +58,10 @@ public class PlugSettingActivity extends BaseActivity {
     ImageView ivButtonControl;
     @BindView(R2.id.rl_debug_mode)
     RelativeLayout rlDebugMode;
+    @BindView(R2.id.rl_modify_network)
+    RelativeLayout rlModifyNetwork;
+    @BindView(R2.id.rl_ota)
+    RelativeLayout rlOta;
 
 
     private MokoDevice mMokoDevice;
@@ -89,6 +88,8 @@ public class PlugSettingActivity extends BaseActivity {
         }
         assert mMokoDevice != null;
         rlDebugMode.setVisibility(mMokoDevice.deviceMode == 2 ? View.VISIBLE : View.GONE);
+        rlModifyNetwork.setVisibility(mMokoDevice.deviceMode == 2 ? View.GONE : View.VISIBLE);
+        rlOta.setVisibility(mMokoDevice.deviceMode == 2 ? View.GONE : View.VISIBLE);
         String mqttConfigAppStr = SPUtiles.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         appMqttConfig = new Gson().fromJson(mqttConfigAppStr, MQTTConfig.class);
         mHandler = new Handler(Looper.getMainLooper());
@@ -104,52 +105,51 @@ public class PlugSettingActivity extends BaseActivity {
     public void onMQTTMessageArrivedEvent(MQTTMessageArrivedEvent event) {
         // 更新所有设备的网络状态
         final String topic = event.getTopic();
-        final String message = event.getMessage();
-        if (TextUtils.isEmpty(message))
+        final byte[] message = event.getMessage();
+        if (message.length < 8)
             return;
-        MsgCommon<JsonObject> msgCommon;
-        try {
-            Type type = new TypeToken<MsgCommon<JsonObject>>() {
-            }.getType();
-            msgCommon = new Gson().fromJson(message, type);
-        } catch (Exception e) {
+        int header = message[0] & 0xFF;// 0xED
+        int flag = message[1] & 0xFF;// read or write
+        int cmd = message[2] & 0xFF;
+        int deviceIdLength = message[3] & 0xFF;
+        String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
+        int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
+        byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
+        if (header != 0xED)
             return;
-        }
-        if (!mMokoDevice.deviceId.equals(msgCommon.device_info.device_id)) {
+        if (!mMokoDevice.deviceId.equals(deviceId))
             return;
-        }
         mMokoDevice.isOnline = true;
-        if (msgCommon.msg_id == MQTTConstants.READ_MSG_ID_BUTTON_CONTROL_ENABLE) {
+        if (cmd == MQTTConstants.MSG_ID_BUTTON_CONTROL_ENABLE && flag == 0) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0)
-                return;
-            Type infoType = new TypeToken<ButtonControlEnable>() {
-            }.getType();
-            ButtonControlEnable enable = new Gson().fromJson(msgCommon.data, infoType);
-            mButtonControlEnable = enable.key_enable == 1;
+            mButtonControlEnable = data[0] == 1;
             ivButtonControl.setImageResource(mButtonControlEnable ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
-        if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_BUTTON_CONTROL_ENABLE) {
+        if (cmd == MQTTConstants.MSG_ID_BUTTON_CONTROL_ENABLE && flag == 1) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0) {
+            if (dataLength != 1)
+                return;
+            if (data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
             ivButtonControl.setImageResource(mButtonControlEnable ? R.drawable.checkbox_open : R.drawable.checkbox_close);
             ToastUtils.showToast(this, "Set up succeed");
         }
-        if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_RESET) {
+        if (cmd == MQTTConstants.CONFIG_MSG_ID_RESET) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0) {
+            if (dataLength != 1)
+                return;
+            if (data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
@@ -174,14 +174,13 @@ public class PlugSettingActivity extends BaseActivity {
                 startActivity(intent);
             }, 500);
         }
-        if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
-            Type infoType = new TypeToken<OverloadOccur>() {
-            }.getType();
-            OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
-            if (overloadOccur.state == 1)
+        if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
+            if (dataLength != 6)
+                return;
+            if (message[5] == 1)
                 finish();
         }
     }
@@ -258,12 +257,9 @@ public class PlugSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadButtonControlEnable(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadButtonControlEnable(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_BUTTON_CONTROL_ENABLE, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -277,14 +273,9 @@ public class PlugSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        ButtonControlEnable enable = new ButtonControlEnable();
-        enable.key_enable = mButtonControlEnable ? 1 : 0;
-        String message = MQTTMessageAssembler.assembleWriteButtonControlEnable(deviceParams, enable);
+        byte[] message = MQTTMessageAssembler.assembleWriteButtonControlEnable(mMokoDevice.deviceId, mButtonControlEnable ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_BUTTON_CONTROL_ENABLE, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -375,12 +366,9 @@ public class PlugSettingActivity extends BaseActivity {
             } else {
                 appTopic = appMqttConfig.topicPublish;
             }
-            DeviceParams deviceParams = new DeviceParams();
-            deviceParams.device_id = mMokoDevice.deviceId;
-            deviceParams.mac = mMokoDevice.mac;
-            String message = MQTTMessageAssembler.assembleWriteReset(deviceParams);
+            byte[] message = MQTTMessageAssembler.assembleWriteReset(mMokoDevice.deviceId);
             try {
-                MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_RESET, appMqttConfig.qos);
+                MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
             } catch (MqttException e) {
                 e.printStackTrace();
             }
@@ -503,14 +491,6 @@ public class PlugSettingActivity extends BaseActivity {
             ToastUtils.showToast(this, R.string.network_error);
             return;
         }
-        if (mMokoDevice.deviceMode == 2) {
-            AlertMessageDialog dialog = new AlertMessageDialog();
-            dialog.setMessage("Device is in debug mode, \n this function is unavailable!");
-            dialog.setCancelGone();
-            dialog.setConfirm("OK");
-            dialog.show(getSupportFragmentManager());
-            return;
-        }
         Intent i = new Intent(this, ModifyMQTTSettingsActivity.class);
         i.putExtra(AppConstants.EXTRA_KEY_DEVICE, mMokoDevice);
         startActivity(i);
@@ -521,14 +501,6 @@ public class PlugSettingActivity extends BaseActivity {
             return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
-            return;
-        }
-        if (mMokoDevice.deviceMode == 2) {
-            AlertMessageDialog dialog = new AlertMessageDialog();
-            dialog.setMessage("Device is in debug mode, \n OTA is unavailable!");
-            dialog.setCancelGone();
-            dialog.setConfirm("OK");
-            dialog.show(getSupportFragmentManager());
             return;
         }
         Intent i = new Intent(this, OTAActivity.class);

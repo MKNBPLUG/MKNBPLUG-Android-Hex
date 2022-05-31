@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.elvishew.xlog.XLog;
 import com.google.gson.Gson;
+import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.event.MQTTConnectionCompleteEvent;
 import com.moko.support.hex.event.MQTTConnectionFailureEvent;
@@ -433,9 +434,9 @@ public class MQTTSupport {
         mqttAndroidClient.subscribe(topic, qos, new IMqttMessageListener() {
             @Override
             public void messageArrived(String topic, MqttMessage message) {
-                String messageInfo = new String(message.getPayload());
+                String messageInfo = MokoUtils.bytesToHexString(message.getPayload());
                 Log.w("MKNBPLUGHEX", String.format("Message:%s:%s", topic, messageInfo));
-                EventBus.getDefault().post(new MQTTMessageArrivedEvent(topic, new String(message.getPayload())));
+                EventBus.getDefault().post(new MQTTMessageArrivedEvent(topic, message.getPayload()));
             }
         });
 
@@ -458,11 +459,11 @@ public class MQTTSupport {
 
     }
 
-    public void publish(String topic, String message, int msgId, int qos) throws MqttException {
+    public void publish(String topic, byte[] message, int qos) throws MqttException {
         if (!isConnected())
             return;
         MqttMessage messageInfo = new MqttMessage();
-        messageInfo.setPayload(message.getBytes());
+        messageInfo.setPayload(message);
         messageInfo.setQos(qos);
         messageInfo.setRetained(false);
         mqttAndroidClient.publish(topic, messageInfo, null, new IMqttActionListener() {

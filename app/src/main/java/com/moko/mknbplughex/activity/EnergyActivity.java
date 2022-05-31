@@ -11,8 +11,6 @@ import android.widget.TextView;
 
 import com.elvishew.xlog.XLog;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
 import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
@@ -26,13 +24,8 @@ import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
-import com.moko.support.hex.entity.DeviceParams;
-import com.moko.support.hex.entity.EnergyHistory;
 import com.moko.support.hex.entity.EnergyInfo;
-import com.moko.support.hex.entity.EnergyTotal;
 import com.moko.support.hex.entity.MQTTConfig;
-import com.moko.support.hex.entity.MsgCommon;
-import com.moko.support.hex.entity.OverloadOccur;
 import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
@@ -40,8 +33,8 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 
@@ -113,39 +106,40 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
     public void onMQTTMessageArrivedEvent(MQTTMessageArrivedEvent event) {
         // 更新所有设备的网络状态
         final String topic = event.getTopic();
-        final String message = event.getMessage();
-        if (TextUtils.isEmpty(message))
+        final byte[] message = event.getMessage();
+        if (message.length < 8)
             return;
-        MsgCommon<JsonObject> msgCommon;
-        try {
-            Type type = new TypeToken<MsgCommon<JsonObject>>() {
-            }.getType();
-            msgCommon = new Gson().fromJson(message, type);
-        } catch (Exception e) {
+        int header = message[0] & 0xFF;// 0xED
+        int flag = message[1] & 0xFF;// read or write
+        int cmd = message[2] & 0xFF;
+        int deviceIdLength = message[3] & 0xFF;
+        String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
+        int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
+        byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
+        if (header != 0xED)
             return;
-        }
-        if (!mMokoDevice.deviceId.equals(msgCommon.device_info.device_id)) {
+        if (!mMokoDevice.deviceId.equals(deviceId))
             return;
-        }
         mMokoDevice.isOnline = true;
-        if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_ENERGY_HOURLY
-                || msgCommon.msg_id == MQTTConstants.READ_MSG_ID_ENERGY_HOURLY) {
+        if (cmd == MQTTConstants.NOTIFY_MSG_ID_ENERGY_HOURLY
+                || cmd == MQTTConstants.READ_MSG_ID_ENERGY_HOURLY) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
+            if (dataLength == 0) return;
             if (!rbHourly.isChecked()) return;
-            Type infoType = new TypeToken<EnergyHistory>() {
-            }.getType();
-            EnergyHistory energyHistoryHourly = new Gson().fromJson(msgCommon.data, infoType);
-            if (TextUtils.isEmpty(energyHistoryHourly.timestamp)) return;
-            String date = energyHistoryHourly.timestamp.substring(5, 10);
-            String hour = energyHistoryHourly.timestamp.substring(11, 13);
+            int timestamp = MokoUtils.toInt(Arrays.copyOfRange(data, 0, 4));
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(timestamp);
+            String date = MokoUtils.calendar2strDate(calendar, AppConstants.PATTERN_MM_DD_2);
+            String hour = String.format("%02d", calendar.get(Calendar.HOUR_OF_DAY));
             tvDuration.setText(String.format("00:00 to %s:00,%s", hour, date));
+            byte[] energyBytes = Arrays.copyOfRange(data, 6, dataLength);
             energyInfoList.clear();
             int energyDataSum = 0;
-            for (int i = 0; i < energyHistoryHourly.num; i++) {
-                int energyInt = energyHistoryHourly.energy[i];
+            for (int i = 0; i < energyBytes.length; i += 2) {
+                int energyInt = MokoUtils.toInt(Arrays.copyOfRange(energyBytes, 6 + i, 8 + i));
                 energyDataSum += energyInt;
                 EnergyInfo energyInfo = new EnergyInfo();
                 energyInfo.time = String.format("%02d:00", i);
@@ -155,36 +149,28 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
             adapter.replaceData(energyInfoList);
             tvEnergyTotal.setText(MokoUtils.getDecimalFormat("0.##").format(energyDataSum * 0.01f));
         }
-        if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_ENERGY_DAILY
-                || msgCommon.msg_id == MQTTConstants.READ_MSG_ID_ENERGY_DAILY) {
+        if (cmd == MQTTConstants.NOTIFY_MSG_ID_ENERGY_DAILY
+                || cmd == MQTTConstants.READ_MSG_ID_ENERGY_DAILY) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
+            if (dataLength < 8 || dataLength > 66) return;
             if (!rbDaily.isChecked()) return;
-            Type infoType = new TypeToken<EnergyHistory>() {
-            }.getType();
-            EnergyHistory energyHistoryDaily = new Gson().fromJson(msgCommon.data, infoType);
-            if (TextUtils.isEmpty(energyHistoryDaily.timestamp)) return;
-            int year = Integer.parseInt(energyHistoryDaily.timestamp.substring(0, 4));
-            int month = Integer.parseInt(energyHistoryDaily.timestamp.substring(5, 7));
-            int day = Integer.parseInt(energyHistoryDaily.timestamp.substring(8, 10));
-            int hour = Integer.parseInt(energyHistoryDaily.timestamp.substring(11, 13));
-            int count = energyHistoryDaily.num;
+            int timestamp = MokoUtils.toInt(Arrays.copyOfRange(data, 0, 4));
             Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.YEAR, year);
-            calendar.set(Calendar.MONTH, month - 1);
-            calendar.set(Calendar.DAY_OF_MONTH, day);
-            calendar.set(Calendar.HOUR_OF_DAY, hour);
+            calendar.setTimeInMillis(timestamp);
             String end = MokoUtils.calendar2strDate(calendar, "MM-dd");
             Calendar startCalendar = (Calendar) calendar.clone();
+            int count = data[5] & 0xFF;
             startCalendar.add(Calendar.DAY_OF_MONTH, -(count - 1));
             String start = MokoUtils.calendar2strDate(calendar, "MM-dd");
             tvDuration.setText(String.format("%s to %s", start, end));
+            byte[] energyBytes = Arrays.copyOfRange(data, 6, dataLength);
             energyInfoList.clear();
             int energyDataSum = 0;
-            for (int i = 0; i < count; i++) {
-                int energyInt = energyHistoryDaily.energy[i];
+            for (int i = 0; i < energyBytes.length; i += 2) {
+                int energyInt = MokoUtils.toInt(Arrays.copyOfRange(energyBytes, 6 + i, 8 + i));
                 energyDataSum += energyInt;
                 EnergyInfo energyInfo = new EnergyInfo();
                 String date = MokoUtils.calendar2strDate(calendar, "MM-dd");
@@ -196,24 +182,25 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
             adapter.replaceData(energyInfoList);
             tvEnergyTotal.setText(MokoUtils.getDecimalFormat("0.##").format(energyDataSum * 0.01f));
         }
-        if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_ENERGY_TOTAL
-                || msgCommon.msg_id == MQTTConstants.READ_MSG_ID_ENERGY_TOTAL) {
+        if (cmd == MQTTConstants.NOTIFY_MSG_ID_ENERGY_TOTAL
+                || cmd == MQTTConstants.READ_MSG_ID_ENERGY_TOTAL) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
+            if (dataLength != 9) return;
             if (!rbTotally.isChecked()) return;
-            Type infoType = new TypeToken<EnergyTotal>() {
-            }.getType();
-            EnergyTotal energyTotal = new Gson().fromJson(msgCommon.data, infoType);
-            tvEnergyTotal.setText(MokoUtils.getDecimalFormat("0.##").format(energyTotal.energy * 0.01f));
+            int total = MokoUtils.toInt(Arrays.copyOfRange(data, 5, dataLength));
+            tvEnergyTotal.setText(MokoUtils.getDecimalFormat("0.##").format(total * 0.01f));
         }
-        if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_ENERGY_CLEAR) {
+        if (cmd == MQTTConstants.CONFIG_MSG_ID_ENERGY_CLEAR) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0) {
+            if (dataLength != 1)
+                return;
+            if (data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
@@ -222,14 +209,13 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
             tvEnergyTotal.setText("0");
             ToastUtils.showToast(this, "Set up succeed");
         }
-        if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
-            Type infoType = new TypeToken<OverloadOccur>() {
-            }.getType();
-            OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
-            if (overloadOccur.state == 1)
+        if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
+            if (dataLength != 6)
+                return;
+            if (message[5] == 1)
                 finish();
         }
     }
@@ -258,12 +244,9 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadEnergyHourly(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadEnergyHourly(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_ENERGY_HOURLY, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message,  appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -277,12 +260,9 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadEnergyDaily(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadEnergyDaily(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_ENERGY_DAILY, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message,  appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -296,12 +276,9 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadEnergyTotal(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadEnergyTotal(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_ENERGY_TOTAL, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message,  appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -378,12 +355,9 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleConfigEnergyClear(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleConfigEnergyClear(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_ENERGY_CLEAR, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message,  appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }

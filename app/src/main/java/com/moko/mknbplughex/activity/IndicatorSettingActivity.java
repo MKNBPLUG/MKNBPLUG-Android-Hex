@@ -10,8 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
+import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.R2;
@@ -23,15 +22,7 @@ import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
-import com.moko.support.hex.entity.DeviceParams;
-import com.moko.support.hex.entity.DeviceType;
 import com.moko.support.hex.entity.MQTTConfig;
-import com.moko.support.hex.entity.MsgCommon;
-import com.moko.support.hex.entity.NetConnectedStatus;
-import com.moko.support.hex.entity.NetConnectingStatus;
-import com.moko.support.hex.entity.OverloadOccur;
-import com.moko.support.hex.entity.PowerProtectStatus;
-import com.moko.support.hex.entity.PowerStatus;
 import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
@@ -39,8 +30,8 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -98,118 +89,104 @@ public class IndicatorSettingActivity extends BaseActivity {
     public void onMQTTMessageArrivedEvent(MQTTMessageArrivedEvent event) {
         // 更新所有设备的网络状态
         final String topic = event.getTopic();
-        final String message = event.getMessage();
-        if (TextUtils.isEmpty(message))
+        final byte[] message = event.getMessage();
+        if (message.length < 8)
             return;
-        MsgCommon<JsonObject> msgCommon;
-        try {
-            Type type = new TypeToken<MsgCommon<JsonObject>>() {
-            }.getType();
-            msgCommon = new Gson().fromJson(message, type);
-        } catch (Exception e) {
+        int header = message[0] & 0xFF;// 0xED
+        int flag = message[1] & 0xFF;// read or write
+        int cmd = message[2] & 0xFF;
+        int deviceIdLength = message[3] & 0xFF;
+        String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
+        int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
+        byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
+        if (header != 0xED)
             return;
-        }
-        if (!mMokoDevice.deviceId.equals(msgCommon.device_info.device_id)) {
+        if (!mMokoDevice.deviceId.equals(deviceId))
             return;
-        }
         mMokoDevice.isOnline = true;
-        if (msgCommon.msg_id == MQTTConstants.READ_MSG_ID_NET_CONNECTING_STATUS) {
+        if (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS && flag == 0) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0)
+            if (dataLength != 1)
                 return;
-            Type type = new TypeToken<NetConnectingStatus>() {
-            }.getType();
-            NetConnectingStatus connectingStatus = new Gson().fromJson(msgCommon.data, type);
-            mServerConnectingStatus = connectingStatus.net_connecting == 1;
+            mServerConnectingStatus = data[0] == 1;
             ivServerConnecting.setImageResource(mServerConnectingStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
-        if (msgCommon.msg_id == MQTTConstants.READ_MSG_ID_NET_CONNECTED_STATUS) {
+        if (cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS && flag == 0) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0)
+            if (dataLength != 1)
                 return;
-            Type type = new TypeToken<NetConnectedStatus>() {
-            }.getType();
-            NetConnectedStatus connectedStatus = new Gson().fromJson(msgCommon.data, type);
-            mServerConnectedSelected = connectedStatus.net_connected;
+            mServerConnectedSelected = data[0];
             tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
         }
-        if (msgCommon.msg_id == MQTTConstants.READ_MSG_ID_POWER_SWITCH_STATUS) {
+        if (cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS && flag == 0) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0)
+            if (dataLength != 1)
                 return;
-            Type type = new TypeToken<PowerStatus>() {
-            }.getType();
-            PowerStatus powerStatus = new Gson().fromJson(msgCommon.data, type);
-            mPowerStatus = powerStatus.power_switch == 1;
+            mPowerStatus = data[0] == 1;
             ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
             tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
         }
-        if (msgCommon.msg_id == MQTTConstants.READ_MSG_ID_POWER_PROTECT) {
+        if (cmd == MQTTConstants.MSG_ID_POWER_PROTECT && flag == 0) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0)
+            if (dataLength != 1)
                 return;
-            Type type = new TypeToken<PowerProtectStatus>() {
-            }.getType();
-            PowerProtectStatus powerProtectStatus = new Gson().fromJson(msgCommon.data, type);
-            mPowerProtectStatus = powerProtectStatus.power_protect == 1;
+            mPowerProtectStatus = data[0] == 1;
             ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
-        if (msgCommon.msg_id == MQTTConstants.READ_MSG_ID_DEVICE_TYPE) {
+        if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_TYPE) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0)
+            if (dataLength != 1)
                 return;
-            Type infoType = new TypeToken<DeviceType>() {
-            }.getType();
-            DeviceType deviceType = new Gson().fromJson(msgCommon.data, infoType);
-            mDeviceType = deviceType.type;
+            mDeviceType = data[0];
         }
-        if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_NET_CONNECTING_STATUS
-                || msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_NET_CONNECTED_STATUS
-                || msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_POWER_SWITCH_STATUS
-                || msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_POWER_PROTECT) {
+        if (flag == 1 && (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS
+                || cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS
+                || cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS
+                || cmd == MQTTConstants.MSG_ID_POWER_PROTECT)) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (msgCommon.result_code != 0) {
+            if (dataLength != 1)
+                return;
+            if (data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
             ToastUtils.showToast(this, "Set up succeed");
-            if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_NET_CONNECTING_STATUS)
+            if (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS)
                 ivServerConnecting.setImageResource(mServerConnectingStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
-            if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_NET_CONNECTED_STATUS)
+            if (cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS)
                 tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
-            if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_POWER_SWITCH_STATUS) {
+            if (cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS) {
                 ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
                 tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
             }
-            if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_POWER_PROTECT)
+            if (cmd == MQTTConstants.MSG_ID_POWER_PROTECT)
                 ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
-        if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
-                || msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
-            Type infoType = new TypeToken<OverloadOccur>() {
-            }.getType();
-            OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
-            if (overloadOccur.state == 1)
+        if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
+                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
+            if (dataLength != 6)
+                return;
+            if (message[5] == 1)
                 finish();
         }
     }
@@ -237,12 +214,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadNetConnectingStatus(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadNetConnectingStatus(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_NET_CONNECTING_STATUS, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -255,12 +229,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadNetConnectedStatus(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadNetConnectedStatus(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_NET_CONNECTED_STATUS, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -273,12 +244,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadPowerStatus(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadPowerStatus(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_POWER_SWITCH_STATUS, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -291,12 +259,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadPowerProtectStatus(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadPowerProtectStatus(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_POWER_PROTECT, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -308,12 +273,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        String message = MQTTMessageAssembler.assembleReadDeviceType(deviceParams);
+        byte[] message = MQTTMessageAssembler.assembleReadDeviceType(mMokoDevice.deviceId);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.READ_MSG_ID_DEVICE_TYPE, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -326,14 +288,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        NetConnectingStatus connectingStatus = new NetConnectingStatus();
-        connectingStatus.net_connecting = mServerConnectingStatus ? 1 : 0;
-        String message = MQTTMessageAssembler.assembleWriteNetConnectingStatus(deviceParams, connectingStatus);
+        byte[] message = MQTTMessageAssembler.assembleWriteNetConnectingStatus(mMokoDevice.deviceId, mServerConnectingStatus ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_NET_CONNECTING_STATUS, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -346,14 +303,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        NetConnectedStatus connectedStatus = new NetConnectedStatus();
-        connectedStatus.net_connected = mServerConnectedSelected;
-        String message = MQTTMessageAssembler.assembleWriteNetConnectedStatus(deviceParams, connectedStatus);
+        byte[] message = MQTTMessageAssembler.assembleWriteNetConnectedStatus(mMokoDevice.deviceId, mServerConnectedSelected);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_NET_CONNECTED_STATUS, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -366,14 +318,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        PowerStatus powerStatus = new PowerStatus();
-        powerStatus.power_switch = mPowerStatus ? 1 : 0;
-        String message = MQTTMessageAssembler.assembleWritePowerStatus(deviceParams, powerStatus);
+        byte[] message = MQTTMessageAssembler.assembleWritePowerStatus(mMokoDevice.deviceId, mPowerStatus ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_POWER_SWITCH_STATUS, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -386,14 +333,9 @@ public class IndicatorSettingActivity extends BaseActivity {
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = mMokoDevice.deviceId;
-        deviceParams.mac = mMokoDevice.mac;
-        PowerProtectStatus powerProtectStatus = new PowerProtectStatus();
-        powerProtectStatus.power_protect = mPowerProtectStatus ? 1 : 0;
-        String message = MQTTMessageAssembler.assembleWritePowerProtectStatus(deviceParams, powerProtectStatus);
+        byte[] message = MQTTMessageAssembler.assembleWritePowerProtectStatus(mMokoDevice.deviceId, mPowerProtectStatus ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_POWER_PROTECT, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }

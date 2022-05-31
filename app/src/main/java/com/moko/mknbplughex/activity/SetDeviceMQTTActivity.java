@@ -18,8 +18,6 @@ import android.widget.TextView;
 
 import com.github.lzyzsd.circleprogress.DonutProgress;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
 import com.moko.ble.lib.MokoConstants;
 import com.moko.ble.lib.event.ConnectStatusEvent;
 import com.moko.ble.lib.event.OrderTaskResponseEvent;
@@ -48,7 +46,6 @@ import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.MokoSupport;
 import com.moko.support.hex.OrderTaskAssembler;
-import com.moko.support.hex.entity.MsgCommon;
 import com.moko.support.hex.entity.OrderCHAR;
 import com.moko.support.hex.entity.ParamsKeyEnum;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
@@ -67,7 +64,6 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 import java.io.OutputStream;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -367,24 +363,19 @@ public class SetDeviceMQTTActivity extends BaseActivity implements RadioGroup.On
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMQTTMessageArrivedEvent(MQTTMessageArrivedEvent event) {
         final String topic = event.getTopic();
-        final String message = event.getMessage();
-        if (TextUtils.isEmpty(topic) || isDeviceConnectSuccess) {
+        final byte[] message = event.getMessage();
+        if (message.length < 8)
             return;
-        }
-        if (TextUtils.isEmpty(message))
+        int header = message[0] & 0xFF;// 0xED
+        int flag = message[1] & 0xFF;// read or write
+        int cmd = message[2] & 0xFF;
+        int deviceIdLength = message[3] & 0xFF;
+        String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
+        int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
+        byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
+        if (header != 0xED)
             return;
-        MsgCommon<JsonObject> msgCommon;
-        try {
-            Type type = new TypeToken<MsgCommon<JsonObject>>() {
-            }.getType();
-            msgCommon = new Gson().fromJson(message, type);
-        } catch (Exception e) {
-            return;
-        }
-        if (!mqttDeviceConfig.deviceId.equals(msgCommon.device_info.device_id)) {
-            return;
-        }
-        if (msgCommon.msg_id != MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE)
+        if (cmd != MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE)
             return;
         if (donutProgress == null)
             return;

@@ -3,9 +3,9 @@ package com.moko.support.hex.event;
 public class MQTTMessageArrivedEvent {
 
     private String topic;
-    private String message;
+    private byte[] message;
 
-    public MQTTMessageArrivedEvent(String topic, String message) {
+    public MQTTMessageArrivedEvent(String topic, byte[] message) {
         this.topic = topic;
         this.message = message;
     }
@@ -15,7 +15,7 @@ public class MQTTMessageArrivedEvent {
         return topic;
     }
 
-    public String getMessage() {
+    public byte[] getMessage() {
         return message;
     }
 }

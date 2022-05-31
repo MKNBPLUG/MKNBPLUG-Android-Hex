@@ -15,8 +15,7 @@ import android.widget.TextView;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.elvishew.xlog.XLog;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
+import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.BuildConfig;
 import com.moko.mknbplughex.R;
@@ -34,10 +33,6 @@ import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.MokoSupport;
-import com.moko.support.hex.entity.DeviceParams;
-import com.moko.support.hex.entity.MsgCommon;
-import com.moko.support.hex.entity.OverloadOccur;
-import com.moko.support.hex.entity.SwitchInfo;
 import com.moko.support.hex.event.DeviceDeletedEvent;
 import com.moko.support.hex.event.DeviceModifyNameEvent;
 import com.moko.support.hex.event.DeviceOnlineEvent;
@@ -57,8 +52,8 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import androidx.annotation.Nullable;
@@ -360,10 +355,6 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
             ToastUtils.showToast(this, R.string.network_error);
             return;
         }
-        if (!device.isOnline) {
-            ToastUtils.showToast(this, R.string.device_offline);
-            return;
-        }
         if (device.isOverload) {
             ToastUtils.showToast(this, "Socket is overload, please check it!");
             return;
@@ -391,15 +382,10 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        SwitchInfo switchInfo = new SwitchInfo();
-        // 设置与当前开关相反的状态
-        switchInfo.switch_state = device.on_off ? 0 : 1;
-        DeviceParams deviceParams = new DeviceParams();
-        deviceParams.device_id = device.deviceId;
-        deviceParams.mac = device.mac;
-        String message = MQTTMessageAssembler.assembleWriteSwitchInfo(deviceParams, switchInfo);
+        device.on_off = !device.on_off;
+        byte[] message = MQTTMessageAssembler.assembleWriteSwitchInfo(device.deviceId, device.on_off ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, MQTTConstants.CONFIG_MSG_ID_SWITCH_STATE, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -473,19 +459,20 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
             return;
         }
         final String topic = event.getTopic();
-        final String message = event.getMessage();
-        if (TextUtils.isEmpty(message))
+        final byte[] message = event.getMessage();
+        if (message.length < 8)
             return;
-        MsgCommon<JsonObject> msgCommon;
-        try {
-            Type type = new TypeToken<MsgCommon<JsonObject>>() {
-            }.getType();
-            msgCommon = new Gson().fromJson(message, type);
-        } catch (Exception e) {
+        int header = message[0] & 0xFF;// 0xED
+        int flag = message[1] & 0xFF;// read or write
+        int cmd = message[2] & 0xFF;
+        int deviceIdLength = message[3] & 0xFF;
+        String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
+        int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
+        byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
+        if (header != 0xED)
             return;
-        }
         for (final MokoDevice device : devices) {
-            if (device.deviceId.equals(msgCommon.device_info.device_id)) {
+            if (device.deviceId.equals(deviceId)) {
                 device.isOnline = true;
                 if (mHandler.hasMessages(device.id)) {
                     mHandler.removeMessages(device.id);
@@ -499,60 +486,67 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
                 });
                 offline.what = device.id;
                 mHandler.sendMessageDelayed(offline, 90 * 1000);
-                if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE) {
-                    Type infoType = new TypeToken<SwitchInfo>() {
-                    }.getType();
-                    SwitchInfo switchInfo = new Gson().fromJson(msgCommon.data, infoType);
-                    int switch_state = switchInfo.switch_state;
-                    // 启动设备定时离线，62s收不到应答则认为离线
-                    device.on_off = switch_state == 1;
-                    device.isOverload = switchInfo.overload_state == 1;
-                    device.isOverCurrent = switchInfo.overcurrent_state == 1;
-                    device.isOverVoltage = switchInfo.overvoltage_state == 1;
-                    device.isUnderVoltage = switchInfo.undervoltage_state == 1;
+                if (cmd == MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE && flag == 2) {
+                    if (dataLength != 11)
+                        return;
+                    // 启动设备定时离线，90s收不到应答则认为离线
+                    device.on_off = data[5] == 1;
+                    device.isOverload = data[7] == 1;
+                    device.isOverCurrent = data[8] == 1;
+                    device.isOverVoltage = data[9] == 1;
+                    device.isUnderVoltage = data[10] == 1;
                     break;
                 }
-//                if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR) {
+                if (cmd == MQTTConstants.READ_MSG_ID_SWITCH_INFO) {
+                    if (dataLength != 6)
+                        return;
+                    // 启动设备定时离线，90s收不到应答则认为离线
+                    device.on_off = data[0] == 1;
+                    device.isOverload = data[2] == 1;
+                    device.isOverCurrent = data[3] == 1;
+                    device.isOverVoltage = data[4] == 1;
+                    device.isUnderVoltage = data[5] == 1;
+                    break;
+                }
+//                if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR) {
 //                    Type infoType = new TypeToken<OverloadInfo>() {
 //                    }.getType();
 //                    OverloadInfo overLoadInfo = new Gson().fromJson(msgCommon.data, infoType);
 //                    device.isOverload = overLoadInfo.overload_state == 1;
 //                    device.overloadValue = overLoadInfo.overload_value;
 //                }
-                if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR) {
-                    Type infoType = new TypeToken<OverloadOccur>() {
-                    }.getType();
-                    OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
-                    device.isOverload = overloadOccur.state == 1;
+                if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR && flag == 2) {
+                    if (dataLength != 6)
+                        return;
+                    device.isOverload = data[5] == 1;
                     break;
                 }
-                if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR) {
-                    Type infoType = new TypeToken<OverloadOccur>() {
-                    }.getType();
-                    OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
-                    device.isOverVoltage = overloadOccur.state == 1;
+                if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR && flag == 2) {
+                    if (dataLength != 6)
+                        return;
+                    device.isOverVoltage = data[5] == 1;
                     break;
                 }
-                if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
-                    Type infoType = new TypeToken<OverloadOccur>() {
-                    }.getType();
-                    OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
-                    device.isOverCurrent = overloadOccur.state == 1;
+                if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR && flag == 2) {
+                    if (dataLength != 6)
+                        return;
+                    device.isOverCurrent = data[5] == 1;
                     break;
                 }
-                if (msgCommon.msg_id == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR) {
-                    Type infoType = new TypeToken<OverloadOccur>() {
-                    }.getType();
-                    OverloadOccur overloadOccur = new Gson().fromJson(msgCommon.data, infoType);
-                    device.isUnderVoltage = overloadOccur.state == 1;
+                if (cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR && flag == 2) {
+                    if (dataLength != 6)
+                        return;
+                    device.isUnderVoltage = data[5] == 1;
                     break;
                 }
-                if (msgCommon.msg_id == MQTTConstants.CONFIG_MSG_ID_SWITCH_STATE) {
+                if (cmd == MQTTConstants.CONFIG_MSG_ID_SWITCH_STATE && flag == 1) {
                     if (mHandler.hasMessages(0)) {
                         dismissLoadingProgressDialog();
                         mHandler.removeMessages(0);
                     }
-                    if (msgCommon.result_code != 0) {
+                    if (dataLength != 1)
+                        return;
+                    if (data[0] == 0) {
                         ToastUtils.showToast(this, "Set up failed");
                     }
                     break;
