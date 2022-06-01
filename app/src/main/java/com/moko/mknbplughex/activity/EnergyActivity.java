@@ -139,7 +139,7 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
             energyInfoList.clear();
             int energyDataSum = 0;
             for (int i = 0; i < energyBytes.length; i += 2) {
-                int energyInt = MokoUtils.toInt(Arrays.copyOfRange(energyBytes, 6 + i, 8 + i));
+                int energyInt = MokoUtils.toInt(Arrays.copyOfRange(energyBytes, i, 2 + i));
                 energyDataSum += energyInt;
                 EnergyInfo energyInfo = new EnergyInfo();
                 energyInfo.time = String.format("%02d:00", i);
@@ -164,13 +164,13 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
             Calendar startCalendar = (Calendar) calendar.clone();
             int count = data[5] & 0xFF;
             startCalendar.add(Calendar.DAY_OF_MONTH, -(count - 1));
-            String start = MokoUtils.calendar2strDate(calendar, "MM-dd");
+            String start = MokoUtils.calendar2strDate(startCalendar, "MM-dd");
             tvDuration.setText(String.format("%s to %s", start, end));
             byte[] energyBytes = Arrays.copyOfRange(data, 6, dataLength);
             energyInfoList.clear();
             int energyDataSum = 0;
             for (int i = 0; i < energyBytes.length; i += 2) {
-                int energyInt = MokoUtils.toInt(Arrays.copyOfRange(energyBytes, 6 + i, 8 + i));
+                int energyInt = MokoUtils.toInt(Arrays.copyOfRange(energyBytes,  i,  2+ i));
                 energyDataSum += energyInt;
                 EnergyInfo energyInfo = new EnergyInfo();
                 String date = MokoUtils.calendar2strDate(calendar, "MM-dd");

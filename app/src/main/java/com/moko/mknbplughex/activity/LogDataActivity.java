@@ -26,13 +26,13 @@ import com.moko.mknbplughex.base.BaseActivity;
 import com.moko.mknbplughex.db.DBTools;
 import com.moko.mknbplughex.dialog.AlertMessageDialog;
 import com.moko.mknbplughex.entity.LogData;
-import com.moko.mknbplughex.entity.MQTTConfig;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtiles;
 import com.moko.mknbplughex.utils.Utils;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.MokoSupport;
 import com.moko.support.hex.OrderTaskAssembler;
+import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.entity.OrderCHAR;
 import com.moko.support.hex.event.DeviceDeletedEvent;
 

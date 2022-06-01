@@ -117,7 +117,7 @@
             android:paddingLeft="10dp"
             android:paddingRight="10dp"
             android:singleLine="true"
-            android:text="Solid blue"
+            android:text="OFF"
             android:textColor="@color/white_ffffff"
             android:textSize="15sp" />
 

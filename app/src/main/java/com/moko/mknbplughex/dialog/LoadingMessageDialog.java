@@ -17,7 +17,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 public class LoadingMessageDialog extends MokoBaseDialog {
-    private static final int DIALOG_DISMISS_DELAY_TIME = 5000;
+    private static final int DIALOG_DISMISS_DELAY_TIME = 50000;
     public static final String TAG = LoadingMessageDialog.class.getSimpleName();
     @BindView(R2.id.iv_loading)
     ImageView ivLoading;

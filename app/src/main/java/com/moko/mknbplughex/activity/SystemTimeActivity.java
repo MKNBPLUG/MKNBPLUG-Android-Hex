@@ -110,7 +110,8 @@ public class SystemTimeActivity extends BaseActivity {
                 mHandler.removeMessages(0);
             }
             if (dataLength != 1)
-                mSelectedTimeZone = data[0] + 24;
+                return;
+            mSelectedTimeZone = data[0] + 24;
             tvTimeZone.setText(mTimeZones.get(mSelectedTimeZone));
             tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
         }

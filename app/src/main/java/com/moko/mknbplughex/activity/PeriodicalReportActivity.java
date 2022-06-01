@@ -88,7 +88,7 @@ public class PeriodicalReportActivity extends BaseActivity {
             if (dataLength != 8)
                 return;
             etSwitchReportInterval.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 0, 4))));
-            etCountdownReportInterval.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 0, 8))));
+            etCountdownReportInterval.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 4, 8))));
         }
         if (cmd == MQTTConstants.MSG_ID_REPORT_INTERVAL && flag == 1) {
             if (mHandler.hasMessages(0)) {

@@ -13,12 +13,12 @@ import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.base.BaseActivity;
-import com.moko.mknbplughex.entity.MQTTConfig;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtiles;
 import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
+import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
@@ -114,7 +114,7 @@ public class SettingForDeviceActivity extends BaseActivity {
             return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_MQTT_HOST && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength < 1 || dataLength > 64) {
                 return;
             }
             tvHost.setText(new String(data));
@@ -122,98 +122,96 @@ public class SettingForDeviceActivity extends BaseActivity {
             getMQTTPort();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_PORT && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength != 2) {
                 return;
             }
             tvPort.setText(String.valueOf(MokoUtils.toInt(data)));
             getMQTTUsername();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_USERNAME && flag == 0) {
-            if (dataLength != 0) {
-                return;
+            if (dataLength > 0) {
+                tvUserName.setText(new String(data));
             }
-            tvUserName.setText(new String(data));
             getMQTTPassword();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_PASSWORD && flag == 0) {
-            if (dataLength != 0) {
-                return;
+            if (dataLength > 0) {
+                tvPassword.setText(new String(data));
             }
-            tvPassword.setText(new String(data));
             getMQTTClientId();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_CLIENT_ID && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength < 1 || dataLength > 64) {
                 return;
             }
             tvClientId.setText(new String(data));
             getMQTTCleanSession();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_CLEAN_SESSION && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             tvCleanSession.setText(data[0] == 0 ? "NO" : "YES");
             getMQTTQos();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_QOS && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             tvQos.setText(String.valueOf(data[0]));
             getMQTTSubscribeTopic();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_SUBSCRIBE_TOPIC && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength < 1 || dataLength > 128) {
                 return;
             }
             tvSubscribeTopic.setText(new String(data));
             getMQTTPublishTopic();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_PUBLISH_TOPIC && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength < 1 || dataLength > 128) {
                 return;
             }
             tvPublishTopic.setText(new String(data));
             getMQTTKeepAlive();
         }
         if (cmd == MQTTConstants.MSG_ID_MQTT_KEEP_ALIVE && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             tvKeepAlive.setText(String.valueOf(data[0] & 0xFF));
             getLWTEnable();
         }
         if (cmd == MQTTConstants.MSG_ID_LWT_ENABLE && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             tvLwt.setText(String.valueOf(data[0] & 0xFF));
             getLWTQos();
         }
         if (cmd == MQTTConstants.MSG_ID_LWT_QOS && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             tvLwtQos.setText(String.valueOf(data[0] & 0xFF));
             getLWTRetain();
         }
         if (cmd == MQTTConstants.MSG_ID_LWT_RETAIN && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             tvLwtRetain.setText(String.valueOf(data[0] & 0xFF));
             getLWTTopic();
         }
         if (cmd == MQTTConstants.MSG_ID_LWT_TOPIC && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength < 1 || dataLength > 128) {
                 return;
             }
             tvLwtRetain.setText(new String(data));
             getLWTPayload();
         }
         if (cmd == MQTTConstants.MSG_ID_LWT_MESSAGE && flag == 0) {
-            if (dataLength != 0) {
+            if (dataLength < 1 || dataLength > 128) {
                 return;
             }
             tvLwtPayload.setText(new String(data));
@@ -224,7 +222,7 @@ public class SettingForDeviceActivity extends BaseActivity {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             if (data[0] == 0) {

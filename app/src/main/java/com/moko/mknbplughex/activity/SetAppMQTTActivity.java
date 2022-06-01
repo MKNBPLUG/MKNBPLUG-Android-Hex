@@ -19,7 +19,6 @@ import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.adapter.MQTTFragmentAdapter;
 import com.moko.mknbplughex.base.BaseActivity;
 import com.moko.mknbplughex.dialog.AlertMessageDialog;
-import com.moko.mknbplughex.entity.MQTTConfig;
 import com.moko.mknbplughex.fragment.GeneralFragment;
 import com.moko.mknbplughex.fragment.SSLFragment;
 import com.moko.mknbplughex.fragment.UserFragment;
@@ -28,6 +27,7 @@ import com.moko.mknbplughex.utils.SPUtiles;
 import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.mknbplughex.utils.Utils;
 import com.moko.support.hex.MQTTSupport;
+import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.event.MQTTConnectionCompleteEvent;
 import com.moko.support.hex.event.MQTTConnectionFailureEvent;
 

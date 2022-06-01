@@ -97,11 +97,11 @@ public class OverCurrentProtectionActivity extends BaseActivity {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 4)
+            if (dataLength != 3)
                 return;
             cbOvercurrentProtection.setChecked(data[0] == 1);
-            etCurrentThreshold.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 1, 3))));
-            etTimeThreshold.setText(String.valueOf(data[3] & 0xFF));
+            etCurrentThreshold.setText(String.valueOf(data[1] & 0xFF));
+            etTimeThreshold.setText(String.valueOf(data[2] & 0xFF));
         }
         if (cmd == MQTTConstants.MSG_ID_OVER_CURRENT_PROTECTION && flag == 1) {
             if (mHandler.hasMessages(0)) {

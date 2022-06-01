@@ -18,13 +18,13 @@ import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.base.BaseActivity;
 import com.moko.mknbplughex.dialog.BottomDialog;
-import com.moko.mknbplughex.entity.MQTTConfig;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtiles;
 import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
+import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
@@ -137,7 +137,7 @@ public class OTAActivity extends BaseActivity {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 0) {
+            if (dataLength != 1) {
                 return;
             }
             if (data[0] != 0) {

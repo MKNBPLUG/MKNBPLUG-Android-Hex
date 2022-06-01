@@ -461,7 +461,7 @@ public class MQTTMessageAssembler {
         byte[] message = new byte[6 + deviceIdLength + dataLength];
         message[0] = (byte) 0xED;
         message[1] = (byte) 0x01;
-        message[2] = (byte) MQTTConstants.MSG_ID_POWER_ON_DEFAULT;
+        message[2] = (byte) MQTTConstants.MSG_ID_REPORT_INTERVAL;
         message[3] = (byte) deviceIdLength;
         for (int i = 0; i < deviceIdBytes.length; i++) {
             message[i + 4] = deviceIdBytes[i];
@@ -504,7 +504,7 @@ public class MQTTMessageAssembler {
         byte[] message = new byte[6 + deviceIdLength + dataLength];
         message[0] = (byte) 0xED;
         message[1] = (byte) 0x01;
-        message[2] = (byte) MQTTConstants.MSG_ID_POWER_ON_DEFAULT;
+        message[2] = (byte) MQTTConstants.MSG_ID_POWER_REPORT_SETTING;
         message[3] = (byte) deviceIdLength;
         for (int i = 0; i < deviceIdBytes.length; i++) {
             message[i + 4] = deviceIdBytes[i];
@@ -545,7 +545,7 @@ public class MQTTMessageAssembler {
         byte[] message = new byte[6 + deviceIdLength + dataLength];
         message[0] = (byte) 0xED;
         message[1] = (byte) 0x01;
-        message[2] = (byte) MQTTConstants.MSG_ID_POWER_ON_DEFAULT;
+        message[2] = (byte) MQTTConstants.MSG_ID_ENERGY_REPORT_PARAMS;
         message[3] = (byte) deviceIdLength;
         for (int i = 0; i < deviceIdBytes.length; i++) {
             message[i + 4] = deviceIdBytes[i];
@@ -883,9 +883,8 @@ public class MQTTMessageAssembler {
     public static byte[] assembleWriteOverCurrentProtection(String deviceId, int enable, int currentThreshold, int timeThreshold) {
         byte[] deviceIdBytes = deviceId.getBytes();
         int deviceIdLength = deviceId.length();
-        int dataLength = 4;
+        int dataLength = 3;
         byte[] dataLengthBytes = MokoUtils.toByteArray(dataLength, 2);
-        byte[] currentThresholdBytes = MokoUtils.toByteArray(currentThreshold, 2);
         byte[] message = new byte[6 + deviceIdLength + dataLength];
         message[0] = (byte) 0xED;
         message[1] = (byte) 0x01;
@@ -897,10 +896,8 @@ public class MQTTMessageAssembler {
         message[4 + deviceIdLength] = dataLengthBytes[0];
         message[5 + deviceIdLength] = dataLengthBytes[1];
         message[6 + deviceIdLength] = (byte) enable;
-        for (int i = 0; i < 2; i++) {
-            message[i + 7 + deviceIdLength] = currentThresholdBytes[i];
-        }
-        message[9 + deviceIdLength] = (byte) timeThreshold;
+        message[7 + deviceIdLength] = (byte) currentThreshold;
+        message[8 + deviceIdLength] = (byte) timeThreshold;
         XLog.e("app_to_device--->" + MokoUtils.bytesToHexString(message));
         return message;
     }
@@ -1223,10 +1220,7 @@ public class MQTTMessageAssembler {
         }
         message[4 + deviceIdLength] = dataLengthBytes[0];
         message[5 + deviceIdLength] = dataLengthBytes[1];
-        if (dataLength == 0) {
-            message[6 + deviceIdLength] = 0;
-            message[7 + deviceIdLength] = 0;
-        } else {
+        if (dataLength > 0) {
             for (int i = 0; i < dataLength; i++) {
                 message[6 + deviceIdLength + i] = username.getBytes()[i];
             }
@@ -1250,10 +1244,7 @@ public class MQTTMessageAssembler {
         }
         message[4 + deviceIdLength] = dataLengthBytes[0];
         message[5 + deviceIdLength] = dataLengthBytes[1];
-        if (dataLength == 0) {
-            message[6 + deviceIdLength] = 0;
-            message[7 + deviceIdLength] = 0;
-        } else {
+        if (dataLength > 0) {
             for (int i = 0; i < dataLength; i++) {
                 message[6 + deviceIdLength + i] = password.getBytes()[i];
             }
@@ -1526,12 +1517,11 @@ public class MQTTMessageAssembler {
         for (int i = 0; i < deviceIdBytes.length; i++) {
             message[i + 4] = deviceIdBytes[i];
         }
-        if (dataLength == 0) {
-            message[4 + deviceIdLength] = dataLengthBytes[0];
-            message[5 + deviceIdLength] = dataLengthBytes[1];
-        } else {
+        message[4 + deviceIdLength] = dataLengthBytes[0];
+        message[5 + deviceIdLength] = dataLengthBytes[1];
+        if (dataLength > 0) {
             for (int i = 0; i < dataLength; i++) {
-                message[4 + deviceIdLength + i] = apn.getBytes()[i];
+                message[6 + deviceIdLength + i] = apn.getBytes()[i];
             }
         }
         XLog.e("app_to_device--->" + MokoUtils.bytesToHexString(message));
@@ -1551,10 +1541,9 @@ public class MQTTMessageAssembler {
         for (int i = 0; i < deviceIdBytes.length; i++) {
             message[i + 4] = deviceIdBytes[i];
         }
-        if (dataLength == 0) {
-            message[4 + deviceIdLength] = dataLengthBytes[0];
-            message[5 + deviceIdLength] = dataLengthBytes[1];
-        } else {
+        message[4 + deviceIdLength] = dataLengthBytes[0];
+        message[5 + deviceIdLength] = dataLengthBytes[1];
+        if (dataLength > 0) {
             for (int i = 0; i < dataLength; i++) {
                 message[4 + deviceIdLength + i] = username.getBytes()[i];
             }
@@ -1576,10 +1565,9 @@ public class MQTTMessageAssembler {
         for (int i = 0; i < deviceIdBytes.length; i++) {
             message[i + 4] = deviceIdBytes[i];
         }
-        if (dataLength == 0) {
-            message[4 + deviceIdLength] = dataLengthBytes[0];
-            message[5 + deviceIdLength] = dataLengthBytes[1];
-        } else {
+        message[4 + deviceIdLength] = dataLengthBytes[0];
+        message[5 + deviceIdLength] = dataLengthBytes[1];
+        if (dataLength > 0) {
             for (int i = 0; i < dataLength; i++) {
                 message[4 + deviceIdLength + i] = password.getBytes()[i];
             }

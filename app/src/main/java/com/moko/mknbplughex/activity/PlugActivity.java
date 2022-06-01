@@ -346,8 +346,10 @@ public class PlugActivity extends BaseActivity {
                 return;
             if (data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
+            } else {
+                if (cmd == MQTTConstants.CONFIG_MSG_ID_SWITCH_STATE)
+                    getSwitchInfo();
             }
-            changeSwitchState();
             return;
         }
     }
@@ -535,7 +537,7 @@ public class PlugActivity extends BaseActivity {
     }
 
     private void getSwitchInfo() {
-        XLog.i("读取过载状态");
+        XLog.i("读取开关状态");
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;

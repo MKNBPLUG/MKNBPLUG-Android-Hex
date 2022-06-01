@@ -98,7 +98,7 @@ public class SyncTimeFromNTPActivity extends BaseActivity {
             if (dataLength < 3 || dataLength > 67)
                 return;
             cbSyncSwitch.setChecked(data[0] == 1);
-            etSyncInterval.setText(MokoUtils.toInt(Arrays.copyOfRange(data, 1, 3)));
+            etSyncInterval.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 1, 3))));
             if (dataLength > 3)
                 etNtpUrl.setText(new String(Arrays.copyOfRange(data, 3, dataLength)));
         }

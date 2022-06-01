@@ -99,7 +99,7 @@ public class UnderVoltageProtectionActivity extends BaseActivity {
                 return;
             cbUndervoltageProtection.setChecked(data[0] == 1);
             etVoltageThreshold.setText(String.valueOf(data[1] & 0xFF));
-            etTimeThreshold.setText(String.valueOf(data[3] & 0xFF));
+            etTimeThreshold.setText(String.valueOf(data[2] & 0xFF));
         }
         if (cmd == MQTTConstants.MSG_ID_UNDER_VOLTAGE_PROTECTION && flag == 1) {
             if (mHandler.hasMessages(0)) {

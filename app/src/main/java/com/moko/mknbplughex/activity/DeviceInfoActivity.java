@@ -13,12 +13,12 @@ import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.base.BaseActivity;
-import com.moko.mknbplughex.entity.MQTTConfig;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtiles;
 import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
+import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
@@ -90,42 +90,48 @@ public class DeviceInfoActivity extends BaseActivity {
             return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.READ_MSG_ID_MANUFACTURER) {
-            if (dataLength != 0) {
+            if (dataLength == 0) {
                 return;
             }
             tvManufacturer.setText(new String(data));
             getProductModel();
         }
         if (cmd == MQTTConstants.READ_MSG_ID_PRODUCT_MODEL) {
-            if (dataLength != 0) {
+            if (dataLength == 0) {
                 return;
             }
             tvProductModel.setText(new String(data));
             getHardwareVersion();
         }
         if (cmd == MQTTConstants.READ_MSG_ID_HARDWARE_VERSION) {
-            if (dataLength != 0) {
+            if (dataLength == 0) {
                 return;
             }
             tvDeviceHardwareVersion.setText(new String(data));
             getFirmwareVersion();
         }
         if (cmd == MQTTConstants.READ_MSG_ID_FIRMWARE_VERSION) {
-            if (dataLength != 0) {
+            if (dataLength == 0) {
                 return;
             }
-            tvDeviceHardwareVersion.setText(new String(data));
+            tvDeviceFirmwareVersion.setText(new String(data));
             getMac();
         }
         if (cmd == MQTTConstants.READ_MSG_ID_MAC) {
-            if (dataLength != 0) {
+            if (dataLength == 0) {
                 return;
             }
-            tvDeviceMac.setText(new String(data).toUpperCase());
+            StringBuffer macSB = new StringBuffer(MokoUtils.bytesToHexString(data));
+            macSB.insert(2, ":");
+            macSB.insert(5, ":");
+            macSB.insert(8, ":");
+            macSB.insert(11, ":");
+            macSB.insert(14, ":");
+            tvDeviceMac.setText(macSB.toString().toUpperCase());
             getIMEI();
         }
         if (cmd == MQTTConstants.READ_MSG_ID_IMEI) {
-            if (dataLength != 0) {
+            if (dataLength == 0) {
                 return;
             }
             tvDeviceImei.setText(new String(data).toUpperCase());
@@ -136,7 +142,7 @@ public class DeviceInfoActivity extends BaseActivity {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 0) {
+            if (dataLength == 0) {
                 return;
             }
             tvDeviceIccid.setText(new String(data).toUpperCase());

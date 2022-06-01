@@ -105,30 +105,18 @@ public class IndicatorSettingActivity extends BaseActivity {
             return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS && flag == 0) {
-            if (mHandler.hasMessages(0)) {
-                dismissLoadingProgressDialog();
-                mHandler.removeMessages(0);
-            }
             if (dataLength != 1)
                 return;
             mServerConnectingStatus = data[0] == 1;
             ivServerConnecting.setImageResource(mServerConnectingStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
         if (cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS && flag == 0) {
-            if (mHandler.hasMessages(0)) {
-                dismissLoadingProgressDialog();
-                mHandler.removeMessages(0);
-            }
             if (dataLength != 1)
                 return;
             mServerConnectedSelected = data[0];
             tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
         }
         if (cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS && flag == 0) {
-            if (mHandler.hasMessages(0)) {
-                dismissLoadingProgressDialog();
-                mHandler.removeMessages(0);
-            }
             if (dataLength != 1)
                 return;
             mPowerStatus = data[0] == 1;
@@ -136,10 +124,6 @@ public class IndicatorSettingActivity extends BaseActivity {
             tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
         }
         if (cmd == MQTTConstants.MSG_ID_POWER_PROTECT && flag == 0) {
-            if (mHandler.hasMessages(0)) {
-                dismissLoadingProgressDialog();
-                mHandler.removeMessages(0);
-            }
             if (dataLength != 1)
                 return;
             mPowerProtectStatus = data[0] == 1;
