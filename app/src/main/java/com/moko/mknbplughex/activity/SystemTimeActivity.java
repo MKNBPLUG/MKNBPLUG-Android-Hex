@@ -32,6 +32,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.TimeZone;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -73,6 +74,8 @@ public class SystemTimeActivity extends BaseActivity {
         mHandler = new Handler(Looper.getMainLooper());
         mSyncTimeHandler = new Handler(Looper.getMainLooper());
         Calendar calendar = Calendar.getInstance();
+        TimeZone timeZone = TimeZone.getTimeZone("GMT");
+        calendar.setTimeZone(timeZone);
         mShowTime = MokoUtils.calendar2strDate(calendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM);
         mSelectedTimeZone = 40;
         tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
@@ -131,7 +134,7 @@ public class SystemTimeActivity extends BaseActivity {
                 mSyncTimeHandler.removeMessages(0);
             mSyncTimeHandler.postDelayed(() -> {
                 getSystemTime();
-            }, 30 * 1000);
+            }, 60 * 1000);
         }
         if (flag == 1 && (cmd == MQTTConstants.MSG_ID_TIMEZONE
                 || cmd == MQTTConstants.MSG_ID_SYSTEM_TIME)) {
@@ -228,6 +231,8 @@ public class SystemTimeActivity extends BaseActivity {
             appTopic = appMqttConfig.topicPublish;
         }
         Calendar calendar = Calendar.getInstance();
+        TimeZone timeZone = TimeZone.getTimeZone("GMT");
+        calendar.setTimeZone(timeZone);
         int time = (int) (calendar.getTimeInMillis() / 1000);
         mShowTime = MokoUtils.calendar2strDate(calendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM);
         tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
