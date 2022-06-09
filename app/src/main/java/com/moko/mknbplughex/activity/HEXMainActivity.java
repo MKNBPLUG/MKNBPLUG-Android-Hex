@@ -25,7 +25,7 @@ import com.moko.mknbplughex.base.BaseActivity;
 import com.moko.mknbplughex.db.DBTools;
 import com.moko.mknbplughex.dialog.AlertMessageDialog;
 import com.moko.mknbplughex.entity.MokoDevice;
-import com.moko.mknbplughex.utils.SPUtiles;
+import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.mknbplughex.utils.Utils;
 import com.moko.support.hex.MQTTConstants;
@@ -118,7 +118,7 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
             rlEmpty.setVisibility(View.GONE);
         }
         mHandler = new Handler(Looper.getMainLooper());
-        MQTTAppConfigStr = SPUtiles.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
+        MQTTAppConfigStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         if (!TextUtils.isEmpty(MQTTAppConfigStr)) {
             appMqttConfig = new Gson().fromJson(MQTTAppConfigStr, MQTTConfig.class);
             tvTitle.setText(getString(R.string.mqtt_connecting));

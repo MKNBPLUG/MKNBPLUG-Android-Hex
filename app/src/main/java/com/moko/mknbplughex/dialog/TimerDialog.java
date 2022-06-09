@@ -26,7 +26,7 @@ public class TimerDialog extends MokoBaseDialog {
 
     @Override
     public int getLayoutRes() {
-        return R.layout.dialog_timer;
+        return R.layout.dialog_timer_hex;
     }
 
     @Override

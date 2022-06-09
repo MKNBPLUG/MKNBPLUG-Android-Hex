@@ -14,7 +14,7 @@ import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.base.BaseActivity;
 import com.moko.mknbplughex.entity.MokoDevice;
-import com.moko.mknbplughex.utils.SPUtiles;
+import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
@@ -49,7 +49,7 @@ public class PeriodicalReportActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_periodical_report);
         ButterKnife.bind(this);
-        String mqttConfigAppStr = SPUtiles.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
+        String mqttConfigAppStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         appMqttConfig = new Gson().fromJson(mqttConfigAppStr, MQTTConfig.class);
         mMokoDevice = (MokoDevice) getIntent().getSerializableExtra(AppConstants.EXTRA_KEY_DEVICE);
         mHandler = new Handler(Looper.getMainLooper());

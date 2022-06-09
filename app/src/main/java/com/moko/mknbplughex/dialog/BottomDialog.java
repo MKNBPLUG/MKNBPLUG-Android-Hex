@@ -24,7 +24,7 @@ public class BottomDialog extends MokoBaseDialog {
 
     @Override
     public int getLayoutRes() {
-        return R.layout.dialog_bottom;
+        return R.layout.dialog_bottom_hex;
     }
 
     @Override

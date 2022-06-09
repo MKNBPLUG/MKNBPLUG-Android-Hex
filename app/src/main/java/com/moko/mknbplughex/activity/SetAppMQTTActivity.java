@@ -23,7 +23,7 @@ import com.moko.mknbplughex.fragment.GeneralFragment;
 import com.moko.mknbplughex.fragment.SSLFragment;
 import com.moko.mknbplughex.fragment.UserFragment;
 import com.moko.mknbplughex.utils.FileUtils;
-import com.moko.mknbplughex.utils.SPUtiles;
+import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.mknbplughex.utils.Utils;
 import com.moko.support.hex.MQTTSupport;
@@ -94,7 +94,7 @@ public class SetAppMQTTActivity extends BaseActivity implements RadioGroup.OnChe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mqtt_app);
         ButterKnife.bind(this);
-        String MQTTConfigStr = SPUtiles.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
+        String MQTTConfigStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         if (TextUtils.isEmpty(MQTTConfigStr)) {
             mqttConfig = new MQTTConfig();
         } else {
@@ -148,7 +148,7 @@ public class SetAppMQTTActivity extends BaseActivity implements RadioGroup.OnChe
     public void onMQTTConnectionCompleteEvent(MQTTConnectionCompleteEvent event) {
         EventBus.getDefault().cancelEventDelivery(event);
         String mqttConfigStr = new Gson().toJson(mqttConfig, MQTTConfig.class);
-        SPUtiles.setStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, mqttConfigStr);
+        SPUtils.setStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, mqttConfigStr);
         ToastUtils.showToast(SetAppMQTTActivity.this, getString(R.string.success));
         dismissLoadingProgressDialog();
         Intent intent = new Intent();

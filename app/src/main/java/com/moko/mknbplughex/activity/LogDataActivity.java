@@ -4,7 +4,6 @@ package com.moko.mknbplughex.activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -29,7 +28,7 @@ import com.moko.mknbplughex.db.DBTools;
 import com.moko.mknbplughex.dialog.AlertMessageDialog;
 import com.moko.mknbplughex.entity.LogData;
 import com.moko.mknbplughex.entity.MokoDevice;
-import com.moko.mknbplughex.utils.SPUtiles;
+import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.Utils;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.MokoSupport;
@@ -133,7 +132,7 @@ public class LogDataActivity extends BaseActivity implements BaseQuickAdapter.On
         voidDuration = 1000;
         storeString = new StringBuilder();
         mMokoDevice = DBTools.getInstance(this).selectDeviceByMac(mDeviceMac);
-        String mqttConfigAppStr = SPUtiles.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
+        String mqttConfigAppStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         appMqttConfig = new Gson().fromJson(mqttConfigAppStr, MQTTConfig.class);
     }
 
