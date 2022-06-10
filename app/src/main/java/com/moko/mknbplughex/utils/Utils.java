@@ -11,9 +11,8 @@ import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
-import android.os.Environment;
 
-import com.moko.mknbplughex.activity.HEXMainActivity;
+import com.moko.mknbplughex.BuildConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,32 +20,9 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 
+import androidx.core.content.FileProvider;
+
 public class Utils {
-
-
-    public static File getFile(Context context, String fileName) {
-        String devicePath;
-        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            // 优先保存到SD卡中
-            devicePath = HEXMainActivity.PATH_LOGCAT + File.separator + fileName;
-        } else {
-            // 如果SD卡不存在，就保存到本应用的目录下
-            devicePath = context.getFilesDir().getAbsolutePath() + File.separator + "MKNBPLUGHEX" + File.separator + fileName;
-        }
-        File deviceListFile = new File(devicePath);
-        if (!deviceListFile.exists()) {
-            try {
-                File parent = deviceListFile.getParentFile();
-                if (!parent.exists()) {
-                    parent.mkdirs();
-                }
-                deviceListFile.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return deviceListFile;
-    }
 
     /**
      * @Date 2021/12/27
@@ -64,8 +40,18 @@ public class Utils {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 Uri fileUri = IOUtils.insertDownloadFile(context, files[0]);
                 intent.putExtra(Intent.EXTRA_STREAM, fileUri);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                Uri uri;
+                if (BuildConfig.IS_LIBRARY) {
+                    uri = FileProvider.getUriForFile(context, "com.moko.mknbplug.fileprovider", files[0]);
+                } else {
+                    uri = FileProvider.getUriForFile(context, "com.moko.mknbplughex.fileprovider", files[0]);
+                }
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.putExtra(Intent.EXTRA_STREAM, uri);
             } else {
-                intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(files[0]));
+                Uri uri = Uri.fromFile(files[0]);
+                intent.putExtra(Intent.EXTRA_STREAM, uri);
             }
             intent.putExtra(Intent.EXTRA_TEXT, body);
         } else {
