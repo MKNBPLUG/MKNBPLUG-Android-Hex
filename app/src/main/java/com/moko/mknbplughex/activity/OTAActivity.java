@@ -148,7 +148,7 @@ public class OTAActivity extends BaseActivity {
             mHandler.postDelayed(() -> {
                 dismissLoadingMessageDialog();
                 ToastUtils.showToast(this, "Set up failed");
-            }, 50 * 1000);
+            }, 190 * 1000);
             showLoadingMessageDialog("waiting");
             if (mSelected == 0) {
                 setOTAFirmware();
@@ -179,6 +179,7 @@ public class OTAActivity extends BaseActivity {
             if (dataLength != 1)
                 return;
             if (data[0] == 0) {
+                dismissLoadingMessageDialog();
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
@@ -189,7 +190,7 @@ public class OTAActivity extends BaseActivity {
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }
@@ -229,7 +230,7 @@ public class OTAActivity extends BaseActivity {
                 ToastUtils.showToast(this, R.string.mqtt_verify_host);
                 return;
             }
-            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) > 65535) {
+            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) < 1 || Integer.parseInt(portStr) > 65535) {
                 ToastUtils.showToast(this, R.string.mqtt_verify_port_empty);
                 return;
             }
@@ -246,7 +247,7 @@ public class OTAActivity extends BaseActivity {
                 ToastUtils.showToast(this, R.string.mqtt_verify_host);
                 return;
             }
-            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) > 65535) {
+            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) < 1 || Integer.parseInt(portStr) > 65535) {
                 ToastUtils.showToast(this, R.string.mqtt_verify_port_empty);
                 return;
             }
@@ -265,7 +266,7 @@ public class OTAActivity extends BaseActivity {
                 ToastUtils.showToast(this, R.string.mqtt_verify_host);
                 return;
             }
-            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) > 65535) {
+            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) < 1 || Integer.parseInt(portStr) > 65535) {
                 ToastUtils.showToast(this, R.string.mqtt_verify_port_empty);
                 return;
             }

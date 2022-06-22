@@ -545,7 +545,7 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }
@@ -1039,7 +1039,7 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
             ToastUtils.showToast(this, getString(R.string.mqtt_verify_port_empty));
             return false;
         }
-        if (Integer.parseInt(port) > 65535) {
+        if (Integer.parseInt(port) < 1 || Integer.parseInt(port) > 65535) {
             ToastUtils.showToast(this, getString(R.string.mqtt_verify_port));
             return false;
         }

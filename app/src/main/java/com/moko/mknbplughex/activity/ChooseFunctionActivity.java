@@ -73,9 +73,8 @@ public class ChooseFunctionActivity extends BaseActivity {
     public void onConnectStatusEvent(ConnectStatusEvent event) {
         final String action = event.getAction();
         EventBus.getDefault().cancelEventDelivery(event);
-        if (isUpdate) {
+        if (isUpdate || isOTASuccess || isOTAFailed)
             return;
-        }
         if (MokoConstants.ACTION_DISCONNECTED.equals(action)) {
             runOnUiThread(() -> {
                 dismissLoadingProgressDialog();
@@ -105,6 +104,8 @@ public class ChooseFunctionActivity extends BaseActivity {
     }
 
     private boolean isUpdate;
+    private boolean isOTASuccess;
+    private boolean isOTAFailed;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -191,6 +192,7 @@ public class ChooseFunctionActivity extends BaseActivity {
             XLog.w("onDeviceConnecting...");
             mDeviceConnectCount++;
             if (mDeviceConnectCount > 3) {
+                isOTAFailed = true;
                 mAlertMessage = "Opps, update firmware failed!\nPlease reconnect and try it again!";
                 dismissDFUProgressDialog();
                 final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(ChooseFunctionActivity.this);
@@ -224,6 +226,7 @@ public class ChooseFunctionActivity extends BaseActivity {
         @Override
         public void onDfuCompleted(String deviceAddress) {
             isUpdate = !isUpdate;
+            isOTASuccess = true;
             mAlertMessage = "Update Firmware successfully!\nPlease reconnect the device.";
             dismissDFUProgressDialog();
         }
@@ -242,6 +245,7 @@ public class ChooseFunctionActivity extends BaseActivity {
         public void onError(String deviceAddress, int error, int errorType, String message) {
             XLog.i("Error:" + message);
             isUpdate = !isUpdate;
+            isOTAFailed = true;
             mAlertMessage = "Opps, update firmware failed!\nPlease reconnect and try it again!";
             dismissDFUProgressDialog();
         }

@@ -1545,7 +1545,7 @@ public class MQTTMessageAssembler {
         message[5 + deviceIdLength] = dataLengthBytes[1];
         if (dataLength > 0) {
             for (int i = 0; i < dataLength; i++) {
-                message[4 + deviceIdLength + i] = username.getBytes()[i];
+                message[6 + deviceIdLength + i] = username.getBytes()[i];
             }
         }
         XLog.e("app_to_device--->" + MokoUtils.bytesToHexString(message));
@@ -1569,7 +1569,7 @@ public class MQTTMessageAssembler {
         message[5 + deviceIdLength] = dataLengthBytes[1];
         if (dataLength > 0) {
             for (int i = 0; i < dataLength; i++) {
-                message[4 + deviceIdLength + i] = password.getBytes()[i];
+                message[6 + deviceIdLength + i] = password.getBytes()[i];
             }
         }
         XLog.e("app_to_device--->" + MokoUtils.bytesToHexString(message));

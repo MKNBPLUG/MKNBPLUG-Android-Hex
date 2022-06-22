@@ -112,7 +112,7 @@ public class EnergyStorageReportActivity extends BaseActivity {
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }

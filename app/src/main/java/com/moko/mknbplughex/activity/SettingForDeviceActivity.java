@@ -207,7 +207,7 @@ public class SettingForDeviceActivity extends BaseActivity {
             if (dataLength < 1 || dataLength > 128) {
                 return;
             }
-            tvLwtRetain.setText(new String(data));
+            tvLwtTopic.setText(new String(data));
             getLWTPayload();
         }
         if (cmd == MQTTConstants.MSG_ID_LWT_MESSAGE && flag == 0) {
@@ -237,7 +237,7 @@ public class SettingForDeviceActivity extends BaseActivity {
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }

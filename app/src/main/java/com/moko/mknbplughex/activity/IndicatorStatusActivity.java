@@ -152,7 +152,7 @@ public class IndicatorStatusActivity extends BaseActivity implements NumberPicke
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }
@@ -237,7 +237,7 @@ public class IndicatorStatusActivity extends BaseActivity implements NumberPicke
             return;
         }
         int blueValue = Integer.parseInt(blue);
-        if (blueValue <= 0 || blueValue > (maxValue - 5)) {
+        if (blueValue < 1 || blueValue > (maxValue - 5)) {
             ToastUtils.showToast(this, "Para Error");
             return;
         }

@@ -60,7 +60,7 @@ public class OverVoltageProtectionActivity extends BaseActivity {
         if (mDeviceType == 0 || mDeviceType == 2) {
             etVoltageThreshold.setHint("231-264");
         } else if (mDeviceType == 1) {
-            etVoltageThreshold.setHint("121-136");
+            etVoltageThreshold.setHint("121-138");
         }
         mHandler = new Handler(Looper.getMainLooper());
         showLoadingProgressDialog();
@@ -120,7 +120,7 @@ public class OverVoltageProtectionActivity extends BaseActivity {
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }

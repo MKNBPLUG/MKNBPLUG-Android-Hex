@@ -18,6 +18,7 @@ import com.moko.mknbplughex.dialog.BottomDialog;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.ToastUtils;
+import com.moko.mknbplughex.utils.Utils;
 import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
@@ -32,7 +33,6 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.TimeZone;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -51,7 +51,6 @@ public class SystemTimeActivity extends BaseActivity {
 
     private ArrayList<String> mTimeZones;
     private int mSelectedTimeZone;
-    private String mShowTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,19 +72,12 @@ public class SystemTimeActivity extends BaseActivity {
         }
         mHandler = new Handler(Looper.getMainLooper());
         mSyncTimeHandler = new Handler(Looper.getMainLooper());
-        Calendar calendar = Calendar.getInstance();
-        TimeZone timeZone = TimeZone.getTimeZone("GMT");
-        calendar.setTimeZone(timeZone);
-        mShowTime = MokoUtils.calendar2strDate(calendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM);
-        mSelectedTimeZone = 40;
-        tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
         showLoadingProgressDialog();
         mHandler.postDelayed(() -> {
             dismissLoadingProgressDialog();
             finish();
         }, 30 * 1000);
         getTimeZone();
-        getSystemTime();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -108,15 +100,11 @@ public class SystemTimeActivity extends BaseActivity {
             return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_TIMEZONE && flag == 0) {
-            if (mHandler.hasMessages(0)) {
-                dismissLoadingProgressDialog();
-                mHandler.removeMessages(0);
-            }
             if (dataLength != 1)
                 return;
             mSelectedTimeZone = data[0] + 24;
             tvTimeZone.setText(mTimeZones.get(mSelectedTimeZone));
-            tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
+            getSystemTime();
         }
         if (cmd == MQTTConstants.MSG_ID_SYSTEM_TIME && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -128,20 +116,17 @@ public class SystemTimeActivity extends BaseActivity {
             int time = MokoUtils.toInt(data);
             Calendar calendar = Calendar.getInstance();
             calendar.setTimeInMillis(time * 1000L);
-            mShowTime = MokoUtils.calendar2strDate(calendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM);
-            tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
+            String timeZoneId = mTimeZones.get(mSelectedTimeZone);
+            String showTime = Utils.calendar2strDate(calendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM, timeZoneId.replaceAll("UTC", "GMT"));
+            tvDeviceTime.setText(String.format("Device time:%s %s", showTime, timeZoneId));
             if (mSyncTimeHandler.hasMessages(0))
                 mSyncTimeHandler.removeMessages(0);
             mSyncTimeHandler.postDelayed(() -> {
-                getSystemTime();
+                getTimeZone();
             }, 60 * 1000);
         }
         if (flag == 1 && (cmd == MQTTConstants.MSG_ID_TIMEZONE
                 || cmd == MQTTConstants.MSG_ID_SYSTEM_TIME)) {
-            if (mHandler.hasMessages(0)) {
-                dismissLoadingProgressDialog();
-                mHandler.removeMessages(0);
-            }
             if (dataLength != 1)
                 return;
             if (data[0] == 0) {
@@ -149,6 +134,7 @@ public class SystemTimeActivity extends BaseActivity {
                 return;
             }
             ToastUtils.showToast(this, "Set up succeed");
+            getTimeZone();
         }
         if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
@@ -156,7 +142,7 @@ public class SystemTimeActivity extends BaseActivity {
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }
@@ -231,11 +217,7 @@ public class SystemTimeActivity extends BaseActivity {
             appTopic = appMqttConfig.topicPublish;
         }
         Calendar calendar = Calendar.getInstance();
-        TimeZone timeZone = TimeZone.getTimeZone("GMT");
-        calendar.setTimeZone(timeZone);
         int time = (int) (calendar.getTimeInMillis() / 1000);
-        mShowTime = MokoUtils.calendar2strDate(calendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM);
-        tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
         byte[] message = MQTTMessageAssembler.assembleWriteSystemTime(mMokoDevice.deviceId, time);
         try {
             MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
@@ -256,7 +238,6 @@ public class SystemTimeActivity extends BaseActivity {
             }
             mSelectedTimeZone = value;
             tvTimeZone.setText(mTimeZones.get(mSelectedTimeZone));
-            tvDeviceTime.setText(String.format("Device time:%s %s", mShowTime, mTimeZones.get(mSelectedTimeZone)));
             mHandler.postDelayed(() -> {
                 dismissLoadingProgressDialog();
                 ToastUtils.showToast(this, "Set up failed");

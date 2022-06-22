@@ -92,10 +92,10 @@ public class ElectricityActivity extends BaseActivity {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 11)
+            if (dataLength != 11 && dataLength != 16)
                 return;
             float voltage = MokoUtils.toInt(Arrays.copyOfRange(data, 0, 2)) * 0.1f;
-            int current = MokoUtils.toInt(Arrays.copyOfRange(data, 2, 4));
+            int current = MokoUtils.toIntSigned(Arrays.copyOfRange(data, 2, 4));
             float power = MokoUtils.toInt(Arrays.copyOfRange(data, 4, 8)) * 0.1f;
             float frequency = MokoUtils.toInt(Arrays.copyOfRange(data, 8, 10)) * 0.01f;
             float power_factor = data[10] * 0.01f;
@@ -111,7 +111,7 @@ public class ElectricityActivity extends BaseActivity {
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
             if (dataLength != 6)
                 return;
-            if (message[5] == 1)
+            if (data[5] == 1)
                 finish();
         }
     }
