@@ -33,6 +33,7 @@ import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
 import org.eclipse.paho.client.mqttv3.MqttException;
+import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
@@ -86,9 +87,10 @@ public class PlugActivity extends BaseActivity {
         }
         showLoadingProgressDialog();
         mHandler.postDelayed(() -> {
+            EventBus.getDefault().post(new DeviceOnlineEvent(mMokoDevice.deviceId, false));
             dismissLoadingProgressDialog();
             finish();
-        }, 30 * 1000);
+        }, 90 * 1000);
         getSwitchInfo();
     }
 
@@ -129,9 +131,10 @@ public class PlugActivity extends BaseActivity {
         dialog.setOnAlertConfirmListener(() -> {
             showLoadingProgressDialog();
             mHandler.postDelayed(() -> {
+                EventBus.getDefault().post(new DeviceOnlineEvent(mMokoDevice.deviceId, false));
                 dismissLoadingProgressDialog();
                 finish();
-            }, 30 * 1000);
+            }, 90 * 1000);
             clearOverStatus();
         });
         dialog.show(getSupportFragmentManager());
@@ -364,16 +367,16 @@ public class PlugActivity extends BaseActivity {
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-        String deviceId = event.getDeviceId();
-        if (!mMokoDevice.deviceId.equals(deviceId)) {
-            return;
-        }
-        boolean online = event.isOnline();
-        if (!online)
-            finish();
-    }
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
+//        String deviceId = event.getDeviceId();
+//        if (!mMokoDevice.deviceId.equals(deviceId)) {
+//            return;
+//        }
+//        boolean online = event.isOnline();
+//        if (!online)
+//            finish();
+//    }
 
     private void changeSwitchState() {
         rlTitle.setBackgroundColor(ContextCompat.getColor(this, mMokoDevice.on_off ? R.color.blue_0188cc : R.color.black_303a4b));

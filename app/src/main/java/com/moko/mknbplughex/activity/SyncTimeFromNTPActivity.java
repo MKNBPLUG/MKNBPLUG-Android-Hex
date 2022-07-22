@@ -22,7 +22,6 @@ import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.entity.MQTTConfig;
-import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -126,16 +125,16 @@ public class SyncTimeFromNTPActivity extends BaseActivity {
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-        String deviceId = event.getDeviceId();
-        if (!mMokoDevice.deviceId.equals(deviceId)) {
-            return;
-        }
-        boolean online = event.isOnline();
-        if (!online)
-            finish();
-    }
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
+//        String deviceId = event.getDeviceId();
+//        if (!mMokoDevice.deviceId.equals(deviceId)) {
+//            return;
+//        }
+//        boolean online = event.isOnline();
+//        if (!online)
+//            finish();
+//    }
 
 
     public void onBack(View view) {

@@ -27,7 +27,6 @@ import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.entity.EnergyInfo;
 import com.moko.support.hex.entity.MQTTConfig;
-import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -174,7 +173,7 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
             Calendar startCalendar = (Calendar) calendar.clone();
             int count = data[5] & 0xFF;
             startCalendar.add(Calendar.DAY_OF_MONTH, -(count - 1));
-            String start = Utils.calendar2strDate(calendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM, timeZoneId);
+            String start = Utils.calendar2strDate(startCalendar, AppConstants.PATTERN_YYYY_MM_DD_HH_MM, timeZoneId);
             tvDuration.setText(String.format("%s to %s", start.substring(5, 10), end.substring(5, 10)));
             byte[] energyBytes = Arrays.copyOfRange(data, 6, dataLength);
             energyInfoList.clear();
@@ -230,16 +229,16 @@ public class EnergyActivity extends BaseActivity implements RadioGroup.OnChecked
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-        String deviceId = event.getDeviceId();
-        if (!mMokoDevice.deviceId.equals(deviceId)) {
-            return;
-        }
-        boolean online = event.isOnline();
-        if (!online)
-            finish();
-    }
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
+//        String deviceId = event.getDeviceId();
+//        if (!mMokoDevice.deviceId.equals(deviceId)) {
+//            return;
+//        }
+//        boolean online = event.isOnline();
+//        if (!online)
+//            finish();
+//    }
 
 
     public void onBack(View view) {

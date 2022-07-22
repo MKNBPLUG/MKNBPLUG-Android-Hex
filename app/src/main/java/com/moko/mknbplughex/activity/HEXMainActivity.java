@@ -228,9 +228,6 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
             rlEmpty.setVisibility(View.VISIBLE);
             rvDeviceList.setVisibility(View.GONE);
         }
-        if (id > 0 && mHandler.hasMessages(id)) {
-            mHandler.removeMessages(id);
-        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -254,6 +251,22 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         }
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
+        String deviceId = event.getDeviceId();
+        if (devices == null || devices.size() == 0 || event.isOnline())
+            return;
+        for (MokoDevice mokoDevice : devices) {
+            if (deviceId.equals(mokoDevice.deviceId)){
+                mokoDevice.isOnline = false;
+                mokoDevice.on_off = false;
+                XLog.i(mokoDevice.deviceId + "离线");
+                adapter.replaceData(devices);
+                break;
+            }
+        }
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -273,16 +286,6 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
                     for (final MokoDevice device : devices) {
                         if (deviceId.equals(device.deviceId)) {
                             device.isOnline = true;
-                            if (mHandler.hasMessages(device.id)) {
-                                mHandler.removeMessages(device.id);
-                            }
-                            Message message = Message.obtain(mHandler, () -> {
-                                device.isOnline = false;
-                                XLog.i(device.deviceId + "离线");
-                                adapter.replaceData(devices);
-                            });
-                            message.what = device.id;
-                            mHandler.sendMessageDelayed(message, 90 * 1000);
                             break;
                         }
                     }
@@ -482,18 +485,6 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         for (final MokoDevice device : devices) {
             if (device.deviceId.equals(deviceId)) {
                 device.isOnline = true;
-                if (mHandler.hasMessages(device.id)) {
-                    mHandler.removeMessages(device.id);
-                }
-                Message offline = Message.obtain(mHandler, () -> {
-                    device.isOnline = false;
-                    device.on_off = false;
-                    XLog.i(device.deviceId + "离线");
-                    adapter.replaceData(devices);
-                    EventBus.getDefault().post(new DeviceOnlineEvent(device.deviceId, false));
-                });
-                offline.what = device.id;
-                mHandler.sendMessageDelayed(offline, 90 * 1000);
                 if (cmd == MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE && flag == 2) {
                     if (dataLength != 11)
                         return;
@@ -581,13 +572,6 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     protected void onDestroy() {
         super.onDestroy();
         MQTTSupport.getInstance().disconnectMqtt();
-        if (!devices.isEmpty()) {
-            for (final MokoDevice device : devices) {
-                if (mHandler.hasMessages(device.id)) {
-                    mHandler.removeMessages(device.id);
-                }
-            }
-        }
     }
 
     // 记录上次收到信息的时间,屏蔽无效事件

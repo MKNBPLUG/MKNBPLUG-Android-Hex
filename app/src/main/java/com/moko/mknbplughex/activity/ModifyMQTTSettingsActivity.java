@@ -36,7 +36,6 @@ import com.moko.support.hex.entity.APNSettings;
 import com.moko.support.hex.entity.LWTSettings;
 import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.entity.MQTTSettings;
-import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -550,17 +549,17 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-        String deviceId = event.getDeviceId();
-        if (!mMokoDevice.deviceId.equals(deviceId)) {
-            return;
-        }
-        boolean online = event.isOnline();
-        if (!online) {
-            finish();
-        }
-    }
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
+//        String deviceId = event.getDeviceId();
+//        if (!mMokoDevice.deviceId.equals(deviceId)) {
+//            return;
+//        }
+//        boolean online = event.isOnline();
+//        if (!online) {
+//            finish();
+//        }
+//    }
 
     public void onBack(View view) {
         finish();

@@ -21,7 +21,6 @@ import com.moko.support.hex.MQTTConstants;
 import com.moko.support.hex.MQTTMessageAssembler;
 import com.moko.support.hex.MQTTSupport;
 import com.moko.support.hex.entity.MQTTConfig;
-import com.moko.support.hex.event.DeviceOnlineEvent;
 import com.moko.support.hex.event.MQTTMessageArrivedEvent;
 
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -86,19 +85,32 @@ public class ElectricityActivity extends BaseActivity {
         if (!mMokoDevice.deviceId.equals(deviceId))
             return;
         mMokoDevice.isOnline = true;
-        if (cmd == MQTTConstants.READ_MSG_ID_POWER_INFO
-                || cmd == MQTTConstants.NOTIFY_MSG_ID_POWER_INFO) {
+        if (cmd == MQTTConstants.READ_MSG_ID_POWER_INFO) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 11 && dataLength != 16)
+            if (dataLength != 11)
                 return;
             float voltage = MokoUtils.toInt(Arrays.copyOfRange(data, 0, 2)) * 0.1f;
             int current = MokoUtils.toIntSigned(Arrays.copyOfRange(data, 2, 4));
             float power = MokoUtils.toInt(Arrays.copyOfRange(data, 4, 8)) * 0.1f;
             float frequency = MokoUtils.toInt(Arrays.copyOfRange(data, 8, 10)) * 0.01f;
             float power_factor = data[10] * 0.01f;
+            tvCurrent.setText(String.valueOf(current));
+            tvVoltage.setText(Utils.getDecimalFormat("0.#").format(voltage));
+            tvPower.setText(Utils.getDecimalFormat("0.#").format(power));
+            tvPowerFactor.setText(Utils.getDecimalFormat("0.##").format(power_factor));
+            tvFrequency.setText(Utils.getDecimalFormat("0.##").format(frequency));
+        }
+        if (cmd == MQTTConstants.NOTIFY_MSG_ID_POWER_INFO) {
+            if (dataLength != 16)
+                return;
+            float voltage = MokoUtils.toInt(Arrays.copyOfRange(data, 5, 7)) * 0.1f;
+            int current = MokoUtils.toIntSigned(Arrays.copyOfRange(data, 7, 9));
+            float power = MokoUtils.toInt(Arrays.copyOfRange(data, 9, 13)) * 0.1f;
+            float frequency = MokoUtils.toInt(Arrays.copyOfRange(data, 13, 15)) * 0.01f;
+            float power_factor = data[15] * 0.01f;
             tvCurrent.setText(String.valueOf(current));
             tvVoltage.setText(Utils.getDecimalFormat("0.#").format(voltage));
             tvPower.setText(Utils.getDecimalFormat("0.#").format(power));
@@ -116,16 +128,16 @@ public class ElectricityActivity extends BaseActivity {
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-        String deviceId = event.getDeviceId();
-        if (!mMokoDevice.deviceId.equals(deviceId)) {
-            return;
-        }
-        boolean online = event.isOnline();
-        if (!online)
-            finish();
-    }
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
+//        String deviceId = event.getDeviceId();
+//        if (!mMokoDevice.deviceId.equals(deviceId)) {
+//            return;
+//        }
+//        boolean online = event.isOnline();
+//        if (!online)
+//            finish();
+//    }
 
     public void onBack(View view) {
         finish();
