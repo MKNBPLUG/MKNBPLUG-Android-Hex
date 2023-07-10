@@ -2,15 +2,14 @@ package com.moko.mknbplughex.activity;
 
 import android.content.Intent;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Message;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.RelativeLayout;
-import android.widget.TextView;
+
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.elvishew.xlog.XLog;
@@ -19,9 +18,9 @@ import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.BuildConfig;
 import com.moko.mknbplughex.R;
-import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.adapter.DeviceAdapter;
 import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.databinding.ActivityMainHexBinding;
 import com.moko.mknbplughex.db.DBTools;
 import com.moko.mknbplughex.dialog.AlertMessageDialog;
 import com.moko.mknbplughex.entity.MokoDevice;
@@ -56,22 +55,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import butterknife.BindView;
-import butterknife.ButterKnife;
-
-public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.OnItemChildClickListener,
-        BaseQuickAdapter.OnItemClickListener,
-        BaseQuickAdapter.OnItemLongClickListener {
-
-    @BindView(R2.id.rl_empty)
-    RelativeLayout rlEmpty;
-    @BindView(R2.id.rv_device_list)
-    RecyclerView rvDeviceList;
-    @BindView(R2.id.tv_title)
-    TextView tvTitle;
+public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implements BaseQuickAdapter.OnItemChildClickListener,
+        BaseQuickAdapter.OnItemClickListener, BaseQuickAdapter.OnItemLongClickListener {
     private ArrayList<MokoDevice> devices;
     private DeviceAdapter adapter;
     public Handler mHandler;
@@ -81,11 +66,7 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     public static String PATH_LOGCAT;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main_hex);
-        ButterKnife.bind(this);
-
+    protected void onCreate() {
         // 初始化Xlog
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
             // 优先保存到SD卡中
@@ -108,20 +89,20 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         adapter.setOnItemClickListener(this);
         adapter.setOnItemLongClickListener(this);
         adapter.setOnItemChildClickListener(this);
-        rvDeviceList.setLayoutManager(new LinearLayoutManager(this));
-        rvDeviceList.setAdapter(adapter);
+        mBind.rvDeviceList.setLayoutManager(new LinearLayoutManager(this));
+        mBind.rvDeviceList.setAdapter(adapter);
         if (devices.isEmpty()) {
-            rlEmpty.setVisibility(View.VISIBLE);
-            rvDeviceList.setVisibility(View.GONE);
+            mBind.rlEmpty.setVisibility(View.VISIBLE);
+            mBind.rvDeviceList.setVisibility(View.GONE);
         } else {
-            rvDeviceList.setVisibility(View.VISIBLE);
-            rlEmpty.setVisibility(View.GONE);
+            mBind.rvDeviceList.setVisibility(View.VISIBLE);
+            mBind.rlEmpty.setVisibility(View.GONE);
         }
         mHandler = new Handler(Looper.getMainLooper());
         MQTTAppConfigStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         if (!TextUtils.isEmpty(MQTTAppConfigStr)) {
             appMqttConfig = new Gson().fromJson(MQTTAppConfigStr, MQTTConfig.class);
-            tvTitle.setText(getString(R.string.mqtt_connecting));
+            mBind.tvTitle.setText(getString(R.string.mqtt_connecting));
         }
         StringBuffer buffer = new StringBuffer();
         // 记录机型
@@ -151,7 +132,11 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
             errorReport.append(result.toString());
             XLog.e(errorReport.toString());
         }
+    }
 
+    @Override
+    protected ActivityMainHexBinding getViewBinding() {
+        return ActivityMainHexBinding.inflate(getLayoutInflater());
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -159,19 +144,19 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     ///////////////////////////////////////////////////////////////////////////
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMQTTConnectionCompleteEvent(MQTTConnectionCompleteEvent event) {
-        tvTitle.setText(getString(R.string.app_name));
+        mBind.tvTitle.setText(getString(R.string.app_name));
         // 订阅所有设备的Topic
         subscribeAllDevices();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMQTTConnectionLostEvent(MQTTConnectionLostEvent event) {
-        tvTitle.setText(getString(R.string.mqtt_connecting));
+        mBind.tvTitle.setText(getString(R.string.mqtt_connecting));
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMQTTConnectionFailureEvent(MQTTConnectionFailureEvent event) {
-        tvTitle.setText(getString(R.string.mqtt_connect_failed));
+        mBind.tvTitle.setText(getString(R.string.mqtt_connect_failed));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -225,8 +210,8 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         }
         adapter.replaceData(devices);
         if (devices.isEmpty()) {
-            rlEmpty.setVisibility(View.VISIBLE);
-            rvDeviceList.setVisibility(View.GONE);
+            mBind.rlEmpty.setVisibility(View.VISIBLE);
+            mBind.rvDeviceList.setVisibility(View.GONE);
         }
     }
 
@@ -257,7 +242,7 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         if (devices == null || devices.size() == 0 || event.isOnline())
             return;
         for (MokoDevice mokoDevice : devices) {
-            if (deviceId.equals(mokoDevice.deviceId)){
+            if (deviceId.equals(mokoDevice.deviceId)) {
                 mokoDevice.isOnline = false;
                 mokoDevice.on_off = false;
                 XLog.i(mokoDevice.deviceId + "离线");
@@ -292,11 +277,11 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
                 }
                 adapter.replaceData(devices);
                 if (!devices.isEmpty()) {
-                    rvDeviceList.setVisibility(View.VISIBLE);
-                    rlEmpty.setVisibility(View.GONE);
+                    mBind.rvDeviceList.setVisibility(View.VISIBLE);
+                    mBind.rlEmpty.setVisibility(View.GONE);
                 } else {
-                    rvDeviceList.setVisibility(View.GONE);
-                    rlEmpty.setVisibility(View.VISIBLE);
+                    mBind.rvDeviceList.setVisibility(View.GONE);
+                    mBind.rlEmpty.setVisibility(View.VISIBLE);
                 }
             }
             if (ModifyMQTTSettingsActivity.TAG.equals(from)) {
@@ -325,14 +310,12 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     }
 
     public void setAppMQTTConfig(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         startActivityForResult(new Intent(this, SetAppMQTTActivity.class), AppConstants.REQUEST_CODE_MQTT_CONFIG_APP);
     }
 
     public void mainAddDevices(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (TextUtils.isEmpty(MQTTAppConfigStr)) {
             startActivityForResult(new Intent(this, SetAppMQTTActivity.class), AppConstants.REQUEST_CODE_MQTT_CONFIG_APP);
             return;
@@ -354,6 +337,7 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     @Override
     public void onItemChildClick(BaseQuickAdapter adapter, View view, int position) {
         MokoDevice device = (MokoDevice) adapter.getItem(position);
+        if (null == device) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
@@ -419,8 +403,7 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     @Override
     public boolean onItemLongClick(BaseQuickAdapter adapter, View view, int position) {
         MokoDevice mokoDevice = (MokoDevice) adapter.getItem(position);
-        if (mokoDevice == null)
-            return true;
+        if (mokoDevice == null) return true;
         AlertMessageDialog dialog = new AlertMessageDialog();
         dialog.setTitle("Remove Device");
         dialog.setMessage("Please confirm again whether to \n remove the device,the device \n will be deleted from the device list.");
@@ -466,13 +449,9 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     }
 
     private void updateDeviceNetworkStatus(MQTTMessageArrivedEvent event) {
-        if (devices.isEmpty()) {
-            return;
-        }
-        final String topic = event.getTopic();
+        if (devices.isEmpty()) return;
         final byte[] message = event.getMessage();
-        if (message.length < 8)
-            return;
+        if (message.length < 8) return;
         int header = message[0] & 0xFF;// 0xED
         int flag = message[1] & 0xFF;// read or write
         int cmd = message[2] & 0xFF;
@@ -480,14 +459,12 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
-        if (header != 0xED)
-            return;
+        if (header != 0xED) return;
         for (final MokoDevice device : devices) {
             if (device.deviceId.equals(deviceId)) {
                 device.isOnline = true;
                 if (cmd == MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE && flag == 2) {
-                    if (dataLength != 11)
-                        return;
+                    if (dataLength != 11) return;
                     // 启动设备定时离线，90s收不到应答则认为离线
                     device.on_off = data[5] == 1;
                     device.isOverload = data[7] == 1;
@@ -497,8 +474,7 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
                     break;
                 }
                 if (cmd == MQTTConstants.READ_MSG_ID_SWITCH_INFO) {
-                    if (dataLength != 6)
-                        return;
+                    if (dataLength != 6) return;
                     // 启动设备定时离线，90s收不到应答则认为离线
                     device.on_off = data[0] == 1;
                     device.isOverload = data[2] == 1;
@@ -515,26 +491,22 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
 //                    device.overloadValue = overLoadInfo.overload_value;
 //                }
                 if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR && flag == 2) {
-                    if (dataLength != 6)
-                        return;
+                    if (dataLength != 6) return;
                     device.isOverload = data[5] == 1;
                     break;
                 }
                 if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR && flag == 2) {
-                    if (dataLength != 6)
-                        return;
+                    if (dataLength != 6) return;
                     device.isOverVoltage = data[5] == 1;
                     break;
                 }
                 if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR && flag == 2) {
-                    if (dataLength != 6)
-                        return;
+                    if (dataLength != 6) return;
                     device.isOverCurrent = data[5] == 1;
                     break;
                 }
                 if (cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR && flag == 2) {
-                    if (dataLength != 6)
-                        return;
+                    if (dataLength != 6) return;
                     device.isUnderVoltage = data[5] == 1;
                     break;
                 }
@@ -543,8 +515,7 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
                         dismissLoadingProgressDialog();
                         mHandler.removeMessages(0);
                     }
-                    if (dataLength != 1)
-                        return;
+                    if (dataLength != 1) return;
                     if (data[0] == 0) {
                         ToastUtils.showToast(this, "Set up failed");
                     }
@@ -559,10 +530,10 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == AppConstants.REQUEST_CODE_MQTT_CONFIG_APP && resultCode == RESULT_OK) {
+        if (requestCode == AppConstants.REQUEST_CODE_MQTT_CONFIG_APP && resultCode == RESULT_OK && null != data) {
             MQTTAppConfigStr = data.getStringExtra(AppConstants.EXTRA_KEY_MQTT_CONFIG_APP);
             appMqttConfig = new Gson().fromJson(MQTTAppConfigStr, MQTTConfig.class);
-            tvTitle.setText(getString(R.string.app_name));
+            mBind.tvTitle.setText(getString(R.string.app_name));
             // 订阅所有设备的Topic
             subscribeAllDevices();
         }
@@ -573,19 +544,6 @@ public class HEXMainActivity extends BaseActivity implements BaseQuickAdapter.On
         super.onDestroy();
         MQTTSupport.getInstance().disconnectMqtt();
     }
-
-    // 记录上次收到信息的时间,屏蔽无效事件
-//    protected long mLastMessageTime = 0;
-//
-//    public boolean isDurationVoid() {
-//        long current = SystemClock.elapsedRealtime();
-//        if (current - mLastMessageTime > 500) {
-//            mLastMessageTime = current;
-//            return false;
-//        } else {
-//            return true;
-//        }
-//    }
 
     public void onBack(View view) {
         back();

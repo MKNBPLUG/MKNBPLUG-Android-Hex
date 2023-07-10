@@ -9,29 +9,24 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Process;
 import android.provider.Settings;
+
+import androidx.core.app.ActivityCompat;
 
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.databinding.ActivityGuideBinding;
 import com.moko.mknbplughex.utils.Utils;
 import com.moko.support.hex.event.MQTTConnectionCompleteEvent;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import androidx.core.app.ActivityCompat;
-import butterknife.ButterKnife;
-
-public class GuideActivity extends BaseActivity {
-
+public class GuideActivity extends BaseActivity<ActivityGuideBinding> {
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_guide);
-        ButterKnife.bind(this);
+    protected void onCreate() {
         if ((getIntent().getFlags() & Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) != 0) {
             finish();
             return;
@@ -43,6 +38,16 @@ public class GuideActivity extends BaseActivity {
             }
         }
         delayGotoMain();
+    }
+
+    @Override
+    protected boolean registerEventBus() {
+        return false;
+    }
+
+    @Override
+    protected ActivityGuideBinding getViewBinding() {
+        return ActivityGuideBinding.inflate(getLayoutInflater());
     }
 
     private void delayGotoMain() {
@@ -108,28 +113,26 @@ public class GuideActivity extends BaseActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case AppConstants.PERMISSION_REQUEST_CODE: {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                        // 判断用户是否 点击了不再提醒。(检测该权限是否还可以申请)
-                        boolean shouldShowRequest = shouldShowRequestPermissionRationale(permissions[0]);
-                        if (shouldShowRequest) {
-                            if (permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                                showRequestPermissionDialog2();
-                            } else {
-                                showRequestPermissionDialog();
-                            }
+        if (requestCode == AppConstants.PERMISSION_REQUEST_CODE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    // 判断用户是否 点击了不再提醒。(检测该权限是否还可以申请)
+                    boolean shouldShowRequest = shouldShowRequestPermissionRationale(permissions[0]);
+                    if (shouldShowRequest) {
+                        if (permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                            showRequestPermissionDialog2();
                         } else {
-                            if (permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                                showOpenSettingsDialog2();
-                            } else {
-                                showOpenSettingsDialog();
-                            }
+                            showRequestPermissionDialog();
                         }
                     } else {
-                        delayGotoMain();
+                        if (permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                            showOpenSettingsDialog2();
+                        } else {
+                            showOpenSettingsDialog();
+                        }
                     }
+                } else {
+                    delayGotoMain();
                 }
             }
         }

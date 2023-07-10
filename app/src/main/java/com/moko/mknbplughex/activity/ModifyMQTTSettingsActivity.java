@@ -1,25 +1,23 @@
 package com.moko.mknbplughex.activity;
 
-
 import android.content.Intent;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputFilter;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.TextView;
+
+import androidx.fragment.app.Fragment;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.gson.Gson;
 import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
-import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.adapter.MQTTFragmentAdapter;
 import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.databinding.ActivityMqttDeviceModifyBinding;
 import com.moko.mknbplughex.db.DBTools;
 import com.moko.mknbplughex.dialog.BottomDialog;
 import com.moko.mknbplughex.entity.MokoDevice;
@@ -45,50 +43,13 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import androidx.fragment.app.Fragment;
-import androidx.viewpager2.widget.ViewPager2;
-import butterknife.BindView;
-import butterknife.ButterKnife;
-
-public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGroup.OnCheckedChangeListener {
+public class ModifyMQTTSettingsActivity extends BaseActivity<ActivityMqttDeviceModifyBinding> implements RadioGroup.OnCheckedChangeListener {
     public static String TAG = ModifyMQTTSettingsActivity.class.getSimpleName();
     private final String FILTER_ASCII = "[ -~]*";
-    @BindView(R2.id.et_mqtt_host)
-    EditText etMqttHost;
-    @BindView(R2.id.et_mqtt_port)
-    EditText etMqttPort;
-    @BindView(R2.id.et_mqtt_client_id)
-    EditText etMqttClientId;
-    @BindView(R2.id.et_mqtt_subscribe_topic)
-    EditText etMqttSubscribeTopic;
-    @BindView(R2.id.et_mqtt_publish_topic)
-    EditText etMqttPublishTopic;
-    @BindView(R2.id.rb_general)
-    RadioButton rbGeneral;
-    @BindView(R2.id.rb_user)
-    RadioButton rbUser;
-    @BindView(R2.id.rb_ssl)
-    RadioButton rbSsl;
-    @BindView(R2.id.rb_lwt)
-    RadioButton rbLwt;
-    @BindView(R2.id.vp_mqtt)
-    ViewPager2 vpMqtt;
-    @BindView(R2.id.rg_mqtt)
-    RadioGroup rgMqtt;
-    @BindView(R2.id.et_apn)
-    EditText etApn;
-    @BindView(R2.id.et_apn_username)
-    EditText etApnUsername;
-    @BindView(R2.id.et_apn_password)
-    EditText etApnPassword;
-    @BindView(R2.id.tv_network_priority)
-    TextView tvNetworkPriority;
-
     private GeneralDeviceFragment generalFragment;
     private UserDeviceFragment userFragment;
     private SSLDevicePathFragment sslFragment;
     private LWTFragment lwtFragment;
-    private MQTTFragmentAdapter adapter;
     private ArrayList<Fragment> fragments;
     private MokoDevice mMokoDevice;
     private MQTTConfig appMqttConfig;
@@ -97,37 +58,29 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
     private APNSettings mAPNSettings;
     private ArrayList<String> mNetworkPriority;
     private int mSelectedNetworkPriority;
-
     public Handler mHandler;
 
-    private InputFilter filter;
-
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_mqtt_device_modify);
-        ButterKnife.bind(this);
-
+    protected void onCreate() {
         String mqttConfigAppStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         appMqttConfig = new Gson().fromJson(mqttConfigAppStr, MQTTConfig.class);
         mMQTTSettings = new MQTTSettings();
         mLWTSettings = new LWTSettings();
         mAPNSettings = new APNSettings();
         mMokoDevice = (MokoDevice) getIntent().getSerializableExtra(AppConstants.EXTRA_KEY_DEVICE);
-        filter = (source, start, end, dest, dstart, dend) -> {
+        InputFilter filter = (source, start, end, dest, dstart, dend) -> {
             if (!(source + "").matches(FILTER_ASCII)) {
                 return "";
             }
-
             return null;
         };
-        etMqttHost.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), filter});
-        etMqttClientId.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), filter});
-        etMqttSubscribeTopic.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), filter});
-        etMqttPublishTopic.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), filter});
-        etApn.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100), filter});
-        etApnUsername.setFilters(new InputFilter[]{new InputFilter.LengthFilter(127), filter});
-        etApnPassword.setFilters(new InputFilter[]{new InputFilter.LengthFilter(127), filter});
+        mBind.etMqttHost.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), filter});
+        mBind.etMqttClientId.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), filter});
+        mBind.etMqttSubscribeTopic.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), filter});
+        mBind.etMqttPublishTopic.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), filter});
+        mBind.etApn.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100), filter});
+        mBind.etApnUsername.setFilters(new InputFilter[]{new InputFilter.LengthFilter(127), filter});
+        mBind.etApnPassword.setFilters(new InputFilter[]{new InputFilter.LengthFilter(127), filter});
         mNetworkPriority = new ArrayList<>();
         mNetworkPriority.add("eMTC->NB-IOT->GSM");
         mNetworkPriority.add("eMTC-> GSM -> NB-IOT");
@@ -142,26 +95,31 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
         mNetworkPriority.add("eMTC");
         createFragment();
         initData();
-        adapter = new MQTTFragmentAdapter(this);
+        MQTTFragmentAdapter adapter = new MQTTFragmentAdapter(this);
         adapter.setFragmentList(fragments);
-        vpMqtt.setAdapter(adapter);
-        vpMqtt.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+        mBind.vpMqtt.setAdapter(adapter);
+        mBind.vpMqtt.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
                 if (position == 0) {
-                    rbGeneral.setChecked(true);
+                    mBind.rbGeneral.setChecked(true);
                 } else if (position == 1) {
-                    rbUser.setChecked(true);
+                    mBind.rbUser.setChecked(true);
                 } else if (position == 2) {
-                    rbSsl.setChecked(true);
+                    mBind.rbSsl.setChecked(true);
                 } else if (position == 3) {
-                    rbLwt.setChecked(true);
+                    mBind.rbLwt.setChecked(true);
                 }
             }
         });
-        vpMqtt.setOffscreenPageLimit(4);
-        rgMqtt.setOnCheckedChangeListener(this);
+        mBind.vpMqtt.setOffscreenPageLimit(4);
+        mBind.rgMqtt.setOnCheckedChangeListener(this);
         mHandler = new Handler(Looper.getMainLooper());
+    }
+
+    @Override
+    protected ActivityMqttDeviceModifyBinding getViewBinding() {
+        return ActivityMqttDeviceModifyBinding.inflate(getLayoutInflater());
     }
 
     private void createFragment() {
@@ -188,10 +146,8 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMQTTMessageArrivedEvent(MQTTMessageArrivedEvent event) {
         // 更新所有设备的网络状态
-        final String topic = event.getTopic();
         final byte[] message = event.getMessage();
-        if (message.length < 8)
-            return;
+        if (message.length < 8) return;
         int header = message[0] & 0xFF;// 0xED
         int flag = message[1] & 0xFF;// read or write
         int cmd = message[2] & 0xFF;
@@ -199,18 +155,15 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
         String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
-        if (header != 0xED)
-            return;
-        if (!mMokoDevice.deviceId.equals(deviceId))
-            return;
+        if (header != 0xED) return;
+        if (!mMokoDevice.deviceId.equals(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_STATUS) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             if (data[0] != 0) {
                 ToastUtils.showToast(this, "Device is OTA, please wait");
                 return;
@@ -490,8 +443,7 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
             }
         }
         if (cmd == MQTTConstants.CONFIG_MSG_ID_MQTT_CONFIG_FINISH) {
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             if (data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
@@ -519,8 +471,7 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             if (data[0] == 0) {
                 ToastUtils.showToast(this, "Setup failed, please try it again!");
                 return;
@@ -542,32 +493,17 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
-            if (dataLength != 6)
-                return;
-            if (data[5] == 1)
-                finish();
+            if (dataLength != 6) return;
+            if (data[5] == 1) finish();
         }
     }
-
-//    @Subscribe(threadMode = ThreadMode.MAIN)
-//    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-//        String deviceId = event.getDeviceId();
-//        if (!mMokoDevice.deviceId.equals(deviceId)) {
-//            return;
-//        }
-//        boolean online = event.isOnline();
-//        if (!online) {
-//            finish();
-//        }
-//    }
 
     public void onBack(View view) {
         finish();
     }
 
     public void onSave(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (isValid()) {
             mHandler.postDelayed(() -> {
                 dismissLoadingProgressDialog();
@@ -578,23 +514,20 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
         }
     }
 
-
     public void onSelectCertificate(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         sslFragment.selectCertificate();
     }
 
-
     private void saveParams() {
-        final String host = etMqttHost.getText().toString().trim();
-        final String port = etMqttPort.getText().toString().trim();
-        final String clientId = etMqttClientId.getText().toString().trim();
-        String topicSubscribe = etMqttSubscribeTopic.getText().toString().trim();
-        String topicPublish = etMqttPublishTopic.getText().toString().trim();
-        String apn = etApn.getText().toString().trim();
-        String apnUsername = etApnUsername.getText().toString().trim();
-        String apnPassword = etApnPassword.getText().toString().trim();
+        final String host = mBind.etMqttHost.getText().toString().trim();
+        final String port = mBind.etMqttPort.getText().toString().trim();
+        final String clientId = mBind.etMqttClientId.getText().toString().trim();
+        String topicSubscribe = mBind.etMqttSubscribeTopic.getText().toString().trim();
+        String topicPublish = mBind.etMqttPublishTopic.getText().toString().trim();
+        String apn = mBind.etApn.getText().toString().trim();
+        String apnUsername = mBind.etApnUsername.getText().toString().trim();
+        String apnPassword = mBind.etApnPassword.getText().toString().trim();
 
         mMQTTSettings.host = host;
         mMQTTSettings.port = Integer.parseInt(port);
@@ -652,7 +585,6 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
             e.printStackTrace();
         }
     }
-
 
     private void setMQTTHost() {
         String appTopic;
@@ -1023,13 +955,12 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
         }
     }
 
-
     private boolean isValid() {
-        String host = etMqttHost.getText().toString().trim();
-        String port = etMqttPort.getText().toString().trim();
-        String clientId = etMqttClientId.getText().toString().trim();
-        String topicSubscribe = etMqttSubscribeTopic.getText().toString().trim();
-        String topicPublish = etMqttPublishTopic.getText().toString().trim();
+        String host = mBind.etMqttHost.getText().toString().trim();
+        String port = mBind.etMqttPort.getText().toString().trim();
+        String clientId = mBind.etMqttClientId.getText().toString().trim();
+        String topicSubscribe = mBind.etMqttSubscribeTopic.getText().toString().trim();
+        String topicPublish = mBind.etMqttPublishTopic.getText().toString().trim();
         if (TextUtils.isEmpty(host)) {
             ToastUtils.showToast(this, getString(R.string.mqtt_verify_host));
             return false;
@@ -1058,31 +989,28 @@ public class ModifyMQTTSettingsActivity extends BaseActivity implements RadioGro
             ToastUtils.showToast(this, "Subscribed and published topic can't be same !");
             return false;
         }
-        if (!generalFragment.isValid() || !sslFragment.isValid() || !lwtFragment.isValid())
-            return false;
-        return true;
+        return generalFragment.isValid() && sslFragment.isValid() && lwtFragment.isValid();
     }
 
     @Override
     public void onCheckedChanged(RadioGroup radioGroup, int checkedId) {
         if (checkedId == R.id.rb_general)
-            vpMqtt.setCurrentItem(0);
+            mBind.vpMqtt.setCurrentItem(0);
         else if (checkedId == R.id.rb_user)
-            vpMqtt.setCurrentItem(1);
+            mBind.vpMqtt.setCurrentItem(1);
         else if (checkedId == R.id.rb_ssl)
-            vpMqtt.setCurrentItem(2);
+            mBind.vpMqtt.setCurrentItem(2);
         else if (checkedId == R.id.rb_lwt)
-            vpMqtt.setCurrentItem(3);
+            mBind.vpMqtt.setCurrentItem(3);
     }
 
     public void selectNetworkPriority(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         BottomDialog dialog = new BottomDialog();
         dialog.setDatas(mNetworkPriority, mSelectedNetworkPriority);
         dialog.setListener(value -> {
             mSelectedNetworkPriority = value;
-            tvNetworkPriority.setText(mNetworkPriority.get(value));
+            mBind.tvNetworkPriority.setText(mNetworkPriority.get(value));
         });
         dialog.show(getSupportFragmentManager());
     }

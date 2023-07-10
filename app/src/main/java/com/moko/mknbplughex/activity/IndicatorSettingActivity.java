@@ -1,20 +1,17 @@
 package com.moko.mknbplughex.activity;
 
 import android.content.Intent;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.google.gson.Gson;
 import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
-import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.databinding.ActivityIndicatorSettingBinding;
 import com.moko.mknbplughex.dialog.BottomDialog;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtils;
@@ -32,23 +29,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
-
-
-public class IndicatorSettingActivity extends BaseActivity {
-
-
-    @BindView(R2.id.iv_server_connecting)
-    ImageView ivServerConnecting;
-    @BindView(R2.id.tv_server_connected)
-    TextView tvServerConnected;
-    @BindView(R2.id.iv_indicator_status)
-    ImageView ivIndicatorStatus;
-    @BindView(R2.id.tv_indicator_color)
-    TextView tvIndicatorColor;
-    @BindView(R2.id.iv_protection_signal)
-    ImageView ivProtectionSignal;
+public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSettingBinding> {
     private MQTTConfig appMqttConfig;
     private MokoDevice mMokoDevice;
     private Handler mHandler;
@@ -60,10 +41,7 @@ public class IndicatorSettingActivity extends BaseActivity {
     private int mDeviceType;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_indicator_setting);
-        ButterKnife.bind(this);
+    protected void onCreate() {
         mServerConnectedValues = new ArrayList<>();
         mServerConnectedValues.add("OFF");
         mServerConnectedValues.add("Solid blue for 5 seconds");
@@ -84,13 +62,16 @@ public class IndicatorSettingActivity extends BaseActivity {
         getDeviceType();
     }
 
+    @Override
+    protected ActivityIndicatorSettingBinding getViewBinding() {
+        return ActivityIndicatorSettingBinding.inflate(getLayoutInflater());
+    }
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMQTTMessageArrivedEvent(MQTTMessageArrivedEvent event) {
         // 更新所有设备的网络状态
-        final String topic = event.getTopic();
         final byte[] message = event.getMessage();
-        if (message.length < 8)
-            return;
+        if (message.length < 8) return;
         int header = message[0] & 0xFF;// 0xED
         int flag = message[1] & 0xFF;// read or write
         int cmd = message[2] & 0xFF;
@@ -98,43 +79,36 @@ public class IndicatorSettingActivity extends BaseActivity {
         String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
-        if (header != 0xED)
-            return;
-        if (!mMokoDevice.deviceId.equals(deviceId))
-            return;
+        if (header != 0xED) return;
+        if (!mMokoDevice.deviceId.equals(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS && flag == 0) {
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             mServerConnectingStatus = data[0] == 1;
-            ivServerConnecting.setImageResource(mServerConnectingStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+            mBind.ivServerConnecting.setImageResource(mServerConnectingStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
         if (cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS && flag == 0) {
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             mServerConnectedSelected = data[0];
-            tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
+            mBind.tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
         }
         if (cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS && flag == 0) {
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             mPowerStatus = data[0] == 1;
-            ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
-            tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
+            mBind.ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+            mBind.tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
         }
         if (cmd == MQTTConstants.MSG_ID_POWER_PROTECT && flag == 0) {
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             mPowerProtectStatus = data[0] == 1;
-            ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+            mBind.ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
         if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_TYPE) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             mDeviceType = data[0];
         }
         if (flag == 1 && (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS
@@ -145,50 +119,35 @@ public class IndicatorSettingActivity extends BaseActivity {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 1)
-                return;
+            if (dataLength != 1) return;
             if (data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
             ToastUtils.showToast(this, "Set up succeed");
             if (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS)
-                ivServerConnecting.setImageResource(mServerConnectingStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+                mBind.ivServerConnecting.setImageResource(mServerConnectingStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
             if (cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS)
-                tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
+                mBind.tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
             if (cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS) {
-                ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
-                tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
+                mBind.ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+                mBind.tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
             }
             if (cmd == MQTTConstants.MSG_ID_POWER_PROTECT)
-                ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+                mBind.ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
         if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
-            if (dataLength != 6)
-                return;
-            if (data[5] == 1)
-                finish();
+            if (dataLength != 6) return;
+            if (data[5] == 1) finish();
         }
     }
-
-//    @Subscribe(threadMode = ThreadMode.MAIN)
-//    public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-//        String deviceId = event.getDeviceId();
-//        if (!mMokoDevice.deviceId.equals(deviceId)) {
-//            return;
-//        }
-//        boolean online = event.isOnline();
-//        if (!online)
-//            finish();
-//    }
 
     public void onBack(View view) {
         finish();
     }
-
 
     private void getServerConnectingStatus() {
         String appTopic;
@@ -249,6 +208,7 @@ public class IndicatorSettingActivity extends BaseActivity {
             e.printStackTrace();
         }
     }
+
     private void getDeviceType() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
@@ -326,8 +286,7 @@ public class IndicatorSettingActivity extends BaseActivity {
 
 
     public void onServerConnecting(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
@@ -342,8 +301,7 @@ public class IndicatorSettingActivity extends BaseActivity {
     }
 
     public void onSelectServerConnected(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         BottomDialog dialog = new BottomDialog();
         dialog.setDatas(mServerConnectedValues, mServerConnectedSelected);
         dialog.setListener(value -> {
@@ -363,13 +321,12 @@ public class IndicatorSettingActivity extends BaseActivity {
     }
 
     public void onIndicatorStatus(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
         }
-        Intent i = new Intent(this, IndicatorStatusActivity.class);
+        Intent i = new Intent(this, IndicatorColorActivity.class);
         i.putExtra(AppConstants.EXTRA_KEY_DEVICE, mMokoDevice);
         i.putExtra(AppConstants.EXTRA_KEY_DEVICE_TYPE, mDeviceType);
         startActivity(i);
@@ -377,8 +334,7 @@ public class IndicatorSettingActivity extends BaseActivity {
 
 
     public void onPowerStatus(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
@@ -393,8 +349,7 @@ public class IndicatorSettingActivity extends BaseActivity {
     }
 
     public void onProtectionSignal(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;

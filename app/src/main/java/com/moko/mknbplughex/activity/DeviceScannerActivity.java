@@ -1,7 +1,6 @@
 package com.moko.mknbplughex.activity;
 
 import android.content.Intent;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
@@ -10,7 +9,9 @@ import android.util.SparseArray;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.ImageView;
+
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.elvishew.xlog.XLog;
@@ -21,9 +22,9 @@ import com.moko.ble.lib.task.OrderTask;
 import com.moko.ble.lib.task.OrderTaskResponse;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
-import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.adapter.DeviceInfoAdapter;
 import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.databinding.ActivityScannerBinding;
 import com.moko.mknbplughex.dialog.PasswordDialog;
 import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.ToastUtils;
@@ -39,28 +40,15 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import butterknife.BindView;
-import butterknife.ButterKnife;
 import no.nordicsemi.android.support.v18.scanner.ScanRecord;
 import no.nordicsemi.android.support.v18.scanner.ScanResult;
 
-
-public class DeviceScannerActivity extends BaseActivity implements MokoScanDeviceCallback, BaseQuickAdapter.OnItemClickListener {
-
-
-    @BindView(R2.id.iv_refresh)
-    ImageView ivRefresh;
-    @BindView(R2.id.rv_devices)
-    RecyclerView rvDevices;
+public class DeviceScannerActivity extends BaseActivity<ActivityScannerBinding> implements MokoScanDeviceCallback, BaseQuickAdapter.OnItemClickListener {
     private Animation animation = null;
     private DeviceInfoAdapter mAdapter;
     private ConcurrentHashMap<String, DeviceInfo> mDeviceMap;
@@ -75,24 +63,24 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
     private int mSelectedDeviceType;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_scanner);
-        ButterKnife.bind(this);
+    protected void onCreate() {
         mDeviceMap = new ConcurrentHashMap<>();
         mDevices = new ArrayList<>();
         mAdapter = new DeviceInfoAdapter();
         mAdapter.openLoadAnimation();
         mAdapter.replaceData(mDevices);
         mAdapter.setOnItemClickListener(this);
-        rvDevices.setLayoutManager(new LinearLayoutManager(this));
-        rvDevices.setAdapter(mAdapter);
+        mBind.rvDevices.setLayoutManager(new LinearLayoutManager(this));
+        mBind.rvDevices.setAdapter(mAdapter);
         mokoBleScanner = new MokoBleScanner(this);
         mHandler = new Handler(Looper.getMainLooper());
         mSavedPassword = SPUtils.getStringValue(this, AppConstants.SP_KEY_PASSWORD, "");
-        if (animation == null) {
-            startScan();
-        }
+        if (animation == null) startScan();
+    }
+
+    @Override
+    protected ActivityScannerBinding getViewBinding() {
+        return ActivityScannerBinding.inflate(getLayoutInflater());
     }
 
     @Override
@@ -100,9 +88,7 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
         mDeviceMap.clear();
         new Thread(() -> {
             while (animation != null) {
-                runOnUiThread(() -> {
-                    mAdapter.replaceData(mDevices);
-                });
+                runOnUiThread(() -> mAdapter.replaceData(mDevices));
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -138,8 +124,7 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
                 }
             }
         }
-        if (deviceType == -1)
-            return;
+        if (deviceType == -1) return;
         deviceInfo.deviceMode = manufacturerSpecificDataByte[12] & 0xFF;
         deviceInfo.deviceType = deviceType;
         mDeviceMap.put(deviceInfo.mac, deviceInfo);
@@ -147,7 +132,7 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
 
     @Override
     public void onStopScan() {
-        ivRefresh.clearAnimation();
+        mBind.ivRefresh.clearAnimation();
         animation = null;
     }
 
@@ -157,16 +142,13 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
         // 排序
         if (!mDevices.isEmpty()) {
             System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
-            Collections.sort(mDevices, new Comparator<DeviceInfo>() {
-                @Override
-                public int compare(DeviceInfo lhs, DeviceInfo rhs) {
-                    if (lhs.rssi > rhs.rssi) {
-                        return -1;
-                    } else if (lhs.rssi < rhs.rssi) {
-                        return 1;
-                    }
-                    return 0;
+            Collections.sort(mDevices, (lhs, rhs) -> {
+                if (lhs.rssi > rhs.rssi) {
+                    return -1;
+                } else if (lhs.rssi < rhs.rssi) {
+                    return 1;
                 }
+                return 0;
             });
         }
     }
@@ -178,7 +160,7 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
             return;
         }
         animation = AnimationUtils.loadAnimation(this, R.anim.rotate_refresh);
-        ivRefresh.startAnimation(animation);
+        mBind.ivRefresh.startAnimation(animation);
         mokoBleScanner.startScanDevice(this);
         mHandler.postDelayed(new Runnable() {
             @Override
@@ -231,18 +213,17 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
                             mokoBleScanner.stopScanDevice();
                         }
                         showLoadingProgressDialog();
-                        ivRefresh.postDelayed(() -> MokoSupport.getInstance().connDevice(deviceInfo.mac), 500);
+                        mBind.ivRefresh.postDelayed(() -> MokoSupport.getInstance().connDevice(deviceInfo.mac), 500);
                     }
 
                     @Override
                     public void onDismiss() {
-
                     }
                 });
                 dialog.show(getSupportFragmentManager());
             } else if (deviceInfo.deviceMode == 2) {
                 showLoadingProgressDialog();
-                ivRefresh.postDelayed(() -> MokoSupport.getInstance().connDevice(deviceInfo.mac), 500);
+                mBind.ivRefresh.postDelayed(() -> MokoSupport.getInstance().connDevice(deviceInfo.mac), 500);
             }
         }
     }
@@ -294,10 +275,8 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
             OrderCHAR orderCHAR = (OrderCHAR) response.orderCHAR;
             int responseType = response.responseType;
             byte[] value = response.responseValue;
-            switch (orderCHAR) {
-                case CHAR_PASSWORD:
-                    MokoSupport.getInstance().disConnectBle();
-                    break;
+            if (orderCHAR == OrderCHAR.CHAR_PASSWORD) {
+                MokoSupport.getInstance().disConnectBle();
             }
         }
         if (MokoConstants.ACTION_ORDER_RESULT.equals(action)) {
@@ -305,44 +284,42 @@ public class DeviceScannerActivity extends BaseActivity implements MokoScanDevic
             OrderCHAR orderCHAR = (OrderCHAR) response.orderCHAR;
             int responseType = response.responseType;
             byte[] value = response.responseValue;
-            switch (orderCHAR) {
-                case CHAR_PASSWORD:
-                    dismissLoadingMessageDialog();
-                    if (value.length == 5) {
-                        int header = value[0] & 0xFF;// 0xED
-                        int flag = value[1] & 0xFF;// read or write
-                        int cmd = value[2] & 0xFF;
-                        if (header != 0xED)
-                            return;
-                        int length = value[3] & 0xFF;
-                        if (flag == 0x01 && cmd == 0x01 && length == 0x01) {
-                            int result = value[4] & 0xFF;
-                            if (1 == result) {
-                                mSavedPassword = mPassword;
-                                SPUtils.setStringValue(this, AppConstants.SP_KEY_PASSWORD, mSavedPassword);
-                                XLog.i("Success");
+            if (orderCHAR == OrderCHAR.CHAR_PASSWORD) {
+                dismissLoadingMessageDialog();
+                if (value.length == 5) {
+                    int header = value[0] & 0xFF;// 0xED
+                    int flag = value[1] & 0xFF;// read or write
+                    int cmd = value[2] & 0xFF;
+                    if (header != 0xED)
+                        return;
+                    int length = value[3] & 0xFF;
+                    if (flag == 0x01 && cmd == 0x01 && length == 0x01) {
+                        int result = value[4] & 0xFF;
+                        if (1 == result) {
+                            mSavedPassword = mPassword;
+                            SPUtils.setStringValue(this, AppConstants.SP_KEY_PASSWORD, mSavedPassword);
+                            XLog.i("Success");
 
-                                // 跳转配置页面
-                                Intent intent = new Intent(this, ChooseFunctionActivity.class);
-                                intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_MAC, mSelectedMac);
-                                intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_NAME, mSelectedName);
-                                intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_TYPE, mSelectedDeviceType);
-                                startActivityForResult(intent, AppConstants.REQUEST_CODE_DEVICE_MQTT_SETTINGS);
-                            }
-                            if (0 == result) {
-                                isPasswordError = true;
-                                ToastUtils.showToast(this, "Password Error");
-                                MokoSupport.getInstance().disConnectBle();
-                            }
+                            // 跳转配置页面
+                            Intent intent = new Intent(this, ChooseFunctionActivity.class);
+                            intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_MAC, mSelectedMac);
+                            intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_NAME, mSelectedName);
+                            intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_TYPE, mSelectedDeviceType);
+                            startActivityForResult(intent, AppConstants.REQUEST_CODE_DEVICE_MQTT_SETTINGS);
+                        }
+                        if (0 == result) {
+                            isPasswordError = true;
+                            ToastUtils.showToast(this, "Password Error");
+                            MokoSupport.getInstance().disConnectBle();
                         }
                     }
+                }
             }
         }
     }
 
     public void onRefresh(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (animation == null) {
             startScan();
         } else {

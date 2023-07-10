@@ -2,39 +2,33 @@ package com.moko.mknbplughex.activity;
 
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Bundle;
 import android.view.View;
-import android.widget.TextView;
 
 import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.BaseApplication;
 import com.moko.mknbplughex.R;
-import com.moko.mknbplughex.R2;
 import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.databinding.ActivityAboutBinding;
 import com.moko.mknbplughex.utils.ToastUtils;
 import com.moko.mknbplughex.utils.Utils;
-import com.moko.support.hex.event.MQTTConnectionCompleteEvent;
-
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 import java.util.Calendar;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
-
-public class AboutActivity extends BaseActivity {
-
-    @BindView(R2.id.tv_soft_version)
-    TextView tvSoftVersion;
+public class AboutActivity extends BaseActivity<ActivityAboutBinding> {
+    @Override
+    protected void onCreate() {
+        mBind.tvSoftVersion.setText(getString(R.string.version_info, Utils.getVersionInfo(this)));
+    }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_about);
-        ButterKnife.bind(this);
-        tvSoftVersion.setText(getString(R.string.version_info, Utils.getVersionInfo(this)));
+    protected boolean registerEventBus() {
+        return false;
+    }
+
+    @Override
+    protected ActivityAboutBinding getViewBinding() {
+        return ActivityAboutBinding.inflate(getLayoutInflater());
     }
 
     public void openURL(View view) {
@@ -47,13 +41,8 @@ public class AboutActivity extends BaseActivity {
         finish();
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onMQTTConnectionCompleteEvent(MQTTConnectionCompleteEvent event) {
-    }
-
     public void onFeedbackLog(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         File trackerLog = new File(BaseApplication.PATH_LOGCAT + File.separator + "MKNBPLUGHEX.txt");
         File trackerLogBak = new File(BaseApplication.PATH_LOGCAT + File.separator + "MKNBPLUGHEX.txt.bak");
         File trackerCrashLog = new File(BaseApplication.PATH_LOGCAT + File.separator + "crash_log.txt");
