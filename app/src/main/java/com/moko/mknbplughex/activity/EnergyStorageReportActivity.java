@@ -63,7 +63,7 @@ public class EnergyStorageReportActivity extends BaseActivity<ActivityEnergyStor
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_ENERGY_REPORT_PARAMS && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -101,38 +101,25 @@ public class EnergyStorageReportActivity extends BaseActivity<ActivityEnergyStor
     }
 
     private void getEnergyStorageReport() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadEnergyReportParams(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadEnergyReportParams(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setEnergyStorageReport(int storageInterval, int storageThreshold, int reportInterval) {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWriteEnergyReportParams(mMokoDevice.deviceId, storageInterval, storageThreshold, reportInterval);
+        byte[] message = MQTTMessageAssembler.assembleWriteEnergyReportParams(mMokoDevice.mac, storageInterval, storageThreshold, reportInterval);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     public void onSave(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
@@ -167,8 +154,18 @@ public class EnergyStorageReportActivity extends BaseActivity<ActivityEnergyStor
         int energyStorageInterval = Integer.parseInt(energyStorageIntervalStr);
         if (energyStorageInterval < 1 || energyStorageInterval > 60) return false;
         int powerChangeThreshold = Integer.parseInt(powerChangeThresholdStr);
-        if (powerChangeThreshold < 1 || powerChangeThreshold > 100) return false;
+        if (powerChangeThreshold > 100) return false;
         int energyReportInterval = Integer.parseInt(energyReportIntervalStr);
-        return energyReportInterval <= 43200;
+        return energyReportInterval <= 1440;
+    }
+
+    private String getAppTopTic() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        return appTopic;
     }
 }

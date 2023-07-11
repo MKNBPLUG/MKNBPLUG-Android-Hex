@@ -165,7 +165,7 @@ public class LogDataActivity extends BaseActivity<ActivityLogDataBinding> implem
                         // 跳转首页，刷新数据
                         Intent intent = new Intent(this, HEXMainActivity.class);
                         intent.putExtra(AppConstants.EXTRA_KEY_FROM_ACTIVITY, TAG);
-                        intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_ID, mMokoDevice.deviceId);
+                        intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_MAC, mMokoDevice.mac);
                         startActivity(intent);
                     }, 500);
                 }
@@ -173,7 +173,6 @@ public class LogDataActivity extends BaseActivity<ActivityLogDataBinding> implem
             if (MokoConstants.ACTION_CURRENT_DATA.equals(action)) {
                 OrderTaskResponse response = event.getResponse();
                 OrderCHAR orderCHAR = (OrderCHAR) response.orderCHAR;
-                int responseType = response.responseType;
                 byte[] value = response.responseValue;
                 switch (orderCHAR) {
                     case CHAR_DISCONNECTED_NOTIFY:

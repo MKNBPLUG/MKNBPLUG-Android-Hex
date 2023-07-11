@@ -63,7 +63,7 @@ public class PeriodicalReportActivity extends BaseActivity<ActivityPeriodicalRep
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_REPORT_INTERVAL && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -100,30 +100,18 @@ public class PeriodicalReportActivity extends BaseActivity<ActivityPeriodicalRep
     }
 
     private void getPeriodicalReport() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadReportInterval(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadReportInterval(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setPeriodicalReport(int switchInterval, int countdownInterval) {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWriteReportInterval(mMokoDevice.deviceId, switchInterval, countdownInterval);
+        byte[] message = MQTTMessageAssembler.assembleWriteReportInterval(mMokoDevice.mac, switchInterval, countdownInterval);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -158,8 +146,19 @@ public class PeriodicalReportActivity extends BaseActivity<ActivityPeriodicalRep
             return false;
         }
         int switchInterval = Integer.parseInt(switchIntervalStr);
-        if ((switchInterval != 0 && switchInterval < 10) || switchInterval > 86400) return false;
+        if ((switchInterval != 0 && switchInterval < 30) || switchInterval > 86400)
+            return false;
         int countdownInterval = Integer.parseInt(countdownIntervalStr);
-        return (countdownInterval == 0 || countdownInterval >= 10) && countdownInterval <= 86400;
+        return (countdownInterval == 0 || countdownInterval >= 30) && countdownInterval <= 86400;
+    }
+
+    private String getAppTopTic() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        return appTopic;
     }
 }

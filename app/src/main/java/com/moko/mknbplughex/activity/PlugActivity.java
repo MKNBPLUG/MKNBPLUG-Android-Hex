@@ -59,7 +59,7 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
         }
         showLoadingProgressDialog();
         mHandler.postDelayed(() -> {
-            EventBus.getDefault().post(new DeviceOnlineEvent(mMokoDevice.deviceId, false));
+            EventBus.getDefault().post(new DeviceOnlineEvent(mMokoDevice.mac, false));
             dismissLoadingProgressDialog();
             finish();
         }, 90 * 1000);
@@ -101,7 +101,7 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
         dialog.setOnAlertConfirmListener(() -> {
             showLoadingProgressDialog();
             mHandler.postDelayed(() -> {
-                EventBus.getDefault().post(new DeviceOnlineEvent(mMokoDevice.deviceId, false));
+                EventBus.getDefault().post(new DeviceOnlineEvent(mMokoDevice.mac, false));
                 dismissLoadingProgressDialog();
                 finish();
             }, 90 * 1000);
@@ -112,43 +112,37 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
 
     private void clearOverStatus() {
         XLog.i("清除过载状态");
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
         if (mMokoDevice.isOverload) {
-            byte[] message = MQTTMessageAssembler.assembleConfigClearOverloadStatus(mMokoDevice.deviceId);
+            byte[] message = MQTTMessageAssembler.assembleConfigClearOverloadStatus(mMokoDevice.mac);
             try {
-                MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+                MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
             } catch (MqttException e) {
                 e.printStackTrace();
             }
             return;
         }
         if (mMokoDevice.isOverVoltage) {
-            byte[] message = MQTTMessageAssembler.assembleConfigClearOverVoltageStatus(mMokoDevice.deviceId);
+            byte[] message = MQTTMessageAssembler.assembleConfigClearOverVoltageStatus(mMokoDevice.mac);
             try {
-                MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+                MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
             } catch (MqttException e) {
                 e.printStackTrace();
             }
             return;
         }
         if (mMokoDevice.isOverCurrent) {
-            byte[] message = MQTTMessageAssembler.assembleConfigClearOverCurrentStatus(mMokoDevice.deviceId);
+            byte[] message = MQTTMessageAssembler.assembleConfigClearOverCurrentStatus(mMokoDevice.mac);
             try {
-                MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+                MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
             } catch (MqttException e) {
                 e.printStackTrace();
             }
             return;
         }
         if (mMokoDevice.isUnderVoltage) {
-            byte[] message = MQTTMessageAssembler.assembleConfigClearUnderVoltageStatus(mMokoDevice.deviceId);
+            byte[] message = MQTTMessageAssembler.assembleConfigClearUnderVoltageStatus(mMokoDevice.mac);
             try {
-                MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+                MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
             } catch (MqttException e) {
                 e.printStackTrace();
             }
@@ -167,7 +161,7 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE) {
             if (mHandler.hasMessages(0)) {
@@ -313,8 +307,8 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onDeviceModifyNameEvent(DeviceModifyNameEvent event) {
         // 修改了设备名称
-        String deviceId = event.getDeviceId();
-        if (deviceId.equals(mMokoDevice.deviceId)) {
+        String deviceMac = event.getDeviceMac();
+        if (deviceMac.equalsIgnoreCase(mMokoDevice.mac)) {
             mMokoDevice.name = event.getName();
             mBind.tvTitle.setText(mMokoDevice.name);
         }
@@ -374,40 +368,31 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
         }
         TimerDialog timerDialog = new TimerDialog();
         timerDialog.setOnoff(mMokoDevice.on_off);
-        timerDialog.setListener(new TimerDialog.TimerListener() {
-            @Override
-            public void onConfirmClick(TimerDialog dialog) {
-                if (!MQTTSupport.getInstance().isConnected()) {
-                    ToastUtils.showToast(PlugActivity.this, R.string.network_error);
-                    return;
-                }
-                if (!mMokoDevice.isOnline) {
-                    ToastUtils.showToast(PlugActivity.this, R.string.device_offline);
-                    return;
-                }
-                mHandler.postDelayed(() -> {
-                    dismissLoadingProgressDialog();
-                    ToastUtils.showToast(PlugActivity.this, "Set up failed");
-                }, 30 * 1000);
-                showLoadingProgressDialog();
-                setTimer(dialog.getWvHour(), dialog.getWvMinute());
-                dialog.dismiss();
+        timerDialog.setListener(dialog -> {
+            if (!MQTTSupport.getInstance().isConnected()) {
+                ToastUtils.showToast(PlugActivity.this, R.string.network_error);
+                return;
             }
+            if (!mMokoDevice.isOnline) {
+                ToastUtils.showToast(PlugActivity.this, R.string.device_offline);
+                return;
+            }
+            mHandler.postDelayed(() -> {
+                dismissLoadingProgressDialog();
+                ToastUtils.showToast(PlugActivity.this, "Set up failed");
+            }, 30 * 1000);
+            showLoadingProgressDialog();
+            setTimer(dialog.getWvHour(), dialog.getWvMinute());
+            dialog.dismiss();
         });
         timerDialog.show(getSupportFragmentManager());
     }
 
     private void setTimer(int hour, int minute) {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
         int countdown = hour * 3600 + minute * 60;
-        byte[] message = MQTTMessageAssembler.assembleWriteTimer(mMokoDevice.deviceId, countdown);
+        byte[] message = MQTTMessageAssembler.assembleWriteTimer(mMokoDevice.mac, countdown);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -462,16 +447,10 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
     }
 
     private void changeSwitch() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
         mMokoDevice.on_off = !mMokoDevice.on_off;
-        byte[] message = MQTTMessageAssembler.assembleWriteSwitchInfo(mMokoDevice.deviceId, mMokoDevice.on_off ? 1 : 0);
+        byte[] message = MQTTMessageAssembler.assembleWriteSwitchInfo(mMokoDevice.mac, mMokoDevice.on_off ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -479,17 +458,21 @@ public class PlugActivity extends BaseActivity<ActivityPlugBinding> {
 
     private void getSwitchInfo() {
         XLog.i("读取开关状态");
+        byte[] message = MQTTMessageAssembler.assembleReadSwitchInfo(mMokoDevice.mac);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleReadSwitchInfo(mMokoDevice.deviceId);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }

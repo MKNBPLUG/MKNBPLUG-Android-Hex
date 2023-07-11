@@ -95,8 +95,7 @@ public class ChooseFunctionActivity extends BaseActivity<ActivityChooseFunctionB
     }
 
     public void onDFU(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         chooseFirmwareFile();
     }
 

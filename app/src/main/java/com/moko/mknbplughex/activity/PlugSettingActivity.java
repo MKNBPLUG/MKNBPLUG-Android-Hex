@@ -98,7 +98,7 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_BUTTON_CONTROL_ENABLE && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -148,7 +148,7 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
                 // 跳转首页，刷新数据
                 Intent intent = new Intent(this, HEXMainActivity.class);
                 intent.putExtra(AppConstants.EXTRA_KEY_FROM_ACTIVITY, TAG);
-                intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_ID, mMokoDevice.deviceId);
+                intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_MAC, mMokoDevice.mac);
                 startActivity(intent);
             }, 500);
         }
@@ -164,8 +164,8 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onDeviceModifyNameEvent(DeviceModifyNameEvent event) {
         // 修改了设备名称
-        String deviceId = event.getDeviceId();
-        if (deviceId.equals(mMokoDevice.deviceId)) {
+        String deviceMac = event.getDeviceMac();
+        if (deviceMac.equalsIgnoreCase(mMokoDevice.mac)) {
             mMokoDevice.name = event.getName();
         }
     }
@@ -193,7 +193,7 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
                     }
                     mMokoDevice.name = name;
                     DBTools.getInstance(PlugSettingActivity.this).updateDevice(mMokoDevice);
-                    DeviceModifyNameEvent event = new DeviceModifyNameEvent(mMokoDevice.deviceId);
+                    DeviceModifyNameEvent event = new DeviceModifyNameEvent(mMokoDevice.mac);
                     event.setName(name);
                     EventBus.getDefault().post(event);
                     dialog12.dismiss();
@@ -205,15 +205,9 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
 
     private void getButtonControlEnable() {
         XLog.i("读取按键控制功能开关");
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadButtonControlEnable(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadButtonControlEnable(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -221,15 +215,9 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
 
     private void setButtonControlEnable() {
         XLog.i("设置按键控制功能开关");
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWriteButtonControlEnable(mMokoDevice.deviceId, mButtonControlEnable ? 1 : 0);
+        byte[] message = MQTTMessageAssembler.assembleWriteButtonControlEnable(mMokoDevice.mac, mButtonControlEnable ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -288,7 +276,7 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
                 // 跳转首页，刷新数据
                 Intent intent = new Intent(this, HEXMainActivity.class);
                 intent.putExtra(AppConstants.EXTRA_KEY_FROM_ACTIVITY, TAG);
-                intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_ID, mMokoDevice.deviceId);
+                intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_MAC, mMokoDevice.mac);
                 startActivity(intent);
             }, 500);
         });
@@ -311,15 +299,9 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
             }, 30 * 1000);
             showLoadingProgressDialog();
             XLog.i("重置设备");
-            String appTopic;
-            if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-                appTopic = mMokoDevice.topicSubscribe;
-            } else {
-                appTopic = appMqttConfig.topicPublish;
-            }
-            byte[] message = MQTTMessageAssembler.assembleWriteReset(mMokoDevice.deviceId);
+            byte[] message = MQTTMessageAssembler.assembleWriteReset(mMokoDevice.mac);
             try {
-                MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+                MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
             } catch (MqttException e) {
                 e.printStackTrace();
             }
@@ -371,13 +353,13 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
         startActivity(i);
     }
 
-    public void onConnTimeoutSettingClick(View view) {
+    public void onResetByButtonClick(View view) {
         if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
         }
-        Intent i = new Intent(this, ConnectionTimeoutActivity.class);
+        Intent i = new Intent(this, ResetByButtonActivity.class);
         i.putExtra(AppConstants.EXTRA_KEY_DEVICE, mMokoDevice);
         startActivity(i);
     }
@@ -448,17 +430,6 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
         startActivity(i);
     }
 
-    public void onMQTTSettingForDevice(View view) {
-        if (isWindowLocked()) return;
-        if (!MQTTSupport.getInstance().isConnected()) {
-            ToastUtils.showToast(this, R.string.network_error);
-            return;
-        }
-        Intent i = new Intent(this, SettingForDeviceActivity.class);
-        i.putExtra(AppConstants.EXTRA_KEY_DEVICE, mMokoDevice);
-        startActivity(i);
-    }
-
     public void onDeviceInfo(View view) {
         if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
@@ -521,10 +492,20 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
                     // 跳转首页，刷新数据
                     Intent intent = new Intent(this, HEXMainActivity.class);
                     intent.putExtra(AppConstants.EXTRA_KEY_FROM_ACTIVITY, TAG);
-                    intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_ID, mMokoDevice.deviceId);
+                    intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_MAC, mMokoDevice.mac);
                     startActivity(intent);
                 }, 500);
             }
         }
+    }
+
+    private String getAppTopTic() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        return appTopic;
     }
 }

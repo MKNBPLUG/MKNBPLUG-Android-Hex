@@ -15,10 +15,6 @@ import com.moko.mknbplughex.databinding.ActivityModifyDeviceNameBinding;
 import com.moko.mknbplughex.db.DBTools;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.ToastUtils;
-import com.moko.support.hex.event.MQTTConnectionCompleteEvent;
-
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 public class ModifyNameActivity extends BaseActivity<ActivityModifyDeviceNameBinding> {
     private final String FILTER_ASCII = "[ -~]*";
@@ -59,7 +55,7 @@ public class ModifyNameActivity extends BaseActivity<ActivityModifyDeviceNameBin
         // 跳转首页，刷新数据
         Intent intent = new Intent(this, HEXMainActivity.class);
         intent.putExtra(AppConstants.EXTRA_KEY_FROM_ACTIVITY, TAG);
-        intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_ID, device.deviceId);
+        intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_MAC, device.mac);
         startActivity(intent);
     }
 
@@ -71,7 +67,8 @@ public class ModifyNameActivity extends BaseActivity<ActivityModifyDeviceNameBin
         return super.onKeyDown(keyCode, event);
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onMQTTConnectionCompleteEvent(MQTTConnectionCompleteEvent event) {
+    @Override
+    protected boolean registerEventBus() {
+        return false;
     }
 }

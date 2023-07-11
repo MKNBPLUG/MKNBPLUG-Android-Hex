@@ -72,7 +72,7 @@ public class OverCurrentProtectionActivity extends BaseActivity<ActivityOvercurr
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_OVER_CURRENT_PROTECTION && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -105,29 +105,21 @@ public class OverCurrentProtectionActivity extends BaseActivity<ActivityOvercurr
         }
     }
 
-
     public void onBack(View view) {
         finish();
     }
 
     private void getOverCurrentProtection() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadOverCurrentProtection(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadOverCurrentProtection(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     public void onSave(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
@@ -167,17 +159,21 @@ public class OverCurrentProtectionActivity extends BaseActivity<ActivityOvercurr
     }
 
     private void setOverloadProtection(int currentThreshold, int timeThreshold) {
+        byte[] message = MQTTMessageAssembler.assembleWriteOverCurrentProtection(mMokoDevice.mac, mBind.cbOvercurrentProtection.isChecked() ? 1 : 0, currentThreshold, timeThreshold);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleWriteOverCurrentProtection(mMokoDevice.deviceId, mBind.cbOvercurrentProtection.isChecked() ? 1 : 0, currentThreshold, timeThreshold);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }

@@ -63,7 +63,7 @@ public class ElectricityActivity extends BaseActivity<ActivityElectricityManager
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.READ_MSG_ID_POWER_INFO) {
             if (mHandler.hasMessages(0)) {
@@ -116,7 +116,7 @@ public class ElectricityActivity extends BaseActivity<ActivityElectricityManager
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleReadPowerInfo(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadPowerInfo(mMokoDevice.mac);
         try {
             MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {

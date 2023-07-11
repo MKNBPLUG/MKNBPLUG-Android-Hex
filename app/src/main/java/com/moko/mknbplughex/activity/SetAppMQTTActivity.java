@@ -67,11 +67,14 @@ public class SetAppMQTTActivity extends BaseActivity<ActivityMqttAppBinding> imp
         String MQTTConfigStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         if (TextUtils.isEmpty(MQTTConfigStr)) {
             mqttConfig = new MQTTConfig();
+            mqttConfig.host = "47.104.81.55";
+            mqttConfig.port = "1883";
+            mqttConfig.clientId = "MK_" + Utils.getRandomStr(8);
         } else {
             Gson gson = new Gson();
             mqttConfig = gson.fromJson(MQTTConfigStr, MQTTConfig.class);
         }
-        InputFilter filter = (source, start, end, dest, dstart, dend) -> {
+        InputFilter filter = (source, start, end, dest, dStart, dEnd) -> {
             if (!(source + "").matches(FILTER_ASCII)) {
                 return "";
             }
@@ -152,6 +155,9 @@ public class SetAppMQTTActivity extends BaseActivity<ActivityMqttAppBinding> imp
         sslFragment.setCAPath(mqttConfig.caPath);
         sslFragment.setClientKeyPath(mqttConfig.clientKeyPath);
         sslFragment.setClientCertPath(mqttConfig.clientCertPath);
+        mBind.etMqttHost.setSelection(mBind.etMqttHost.getText().length());
+        mBind.etMqttPort.setSelection(mBind.etMqttPort.getText().length());
+        mBind.etMqttClientId.setSelection(mBind.etMqttClientId.getText().length());
     }
 
     public void onBack(View view) {
@@ -274,6 +280,21 @@ public class SetAppMQTTActivity extends BaseActivity<ActivityMqttAppBinding> imp
         sslFragment.selectCertFile();
     }
 
+    public void onClearSettings(View view) {
+        //清空所有配置信息
+        mBind.etMqttHost.setText("");
+        mBind.etMqttPort.setText("");
+        mBind.etMqttClientId.setText("");
+        mBind.etMqttSubscribeTopic.setText("");
+        mBind.etMqttPublishTopic.setText("");
+        generalFragment.setCleanSession(true);
+        generalFragment.setQos(1);
+        generalFragment.setKeepAlive(60);
+        userFragment.setPassword("");
+        userFragment.setUserName("");
+        sslFragment.setConnectMode(0);
+    }
+
     public void onExportSettings(View view) {
         if (isWindowLocked()) return;
         mqttConfig.host = mBind.etMqttHost.getText().toString().replaceAll(" ", "");
@@ -327,16 +348,12 @@ public class SetAppMQTTActivity extends BaseActivity<ActivityMqttAppBinding> imp
                 row4.createCell(0).setCellValue("Subscribe Topic");
                 if (!TextUtils.isEmpty(mqttConfig.topicSubscribe))
                     row4.createCell(1).setCellValue(String.format("value:%s", mqttConfig.topicSubscribe));
-//                else
-//                    row4.createCell(1).setCellValue("");
                 row4.createCell(2).setCellValue("0-128 characters");
 
                 XSSFRow row5 = sheet.createRow(5);
                 row5.createCell(0).setCellValue("Publish Topic");
                 if (!TextUtils.isEmpty(mqttConfig.topicPublish))
                     row5.createCell(1).setCellValue(String.format("value:%s", mqttConfig.topicPublish));
-//                else
-//                    row5.createCell(1).setCellValue("");
                 row5.createCell(2).setCellValue("0-128 characters");
 
                 XSSFRow row6 = sheet.createRow(6);
@@ -358,16 +375,12 @@ public class SetAppMQTTActivity extends BaseActivity<ActivityMqttAppBinding> imp
                 row9.createCell(0).setCellValue("MQTT Username");
                 if (!TextUtils.isEmpty(mqttConfig.username))
                     row9.createCell(1).setCellValue(String.format("value:%s", mqttConfig.username));
-//                else
-//                    row9.createCell(1).setCellValue("");
                 row9.createCell(2).setCellValue("0-128 characters");
 
                 XSSFRow row10 = sheet.createRow(10);
                 row10.createCell(0).setCellValue("MQTT Password");
                 if (!TextUtils.isEmpty(mqttConfig.password))
                     row10.createCell(1).setCellValue(String.format("value:%s", mqttConfig.password));
-//                else
-//                    row10.createCell(1).setCellValue("");
                 row10.createCell(2).setCellValue("0-128 characters");
 
                 XSSFRow row11 = sheet.createRow(11);

@@ -82,7 +82,7 @@ public class SystemTimeActivity extends BaseActivity<ActivitySystemTimeBinding> 
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_TIMEZONE && flag == 0) {
             if (dataLength != 1) return;
@@ -130,64 +130,39 @@ public class SystemTimeActivity extends BaseActivity<ActivitySystemTimeBinding> 
     }
 
     private void getTimeZone() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadTimeZone(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadTimeZone(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setTimeZone() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
         int time_zone = mSelectedTimeZone - 24;
-        byte[] message = MQTTMessageAssembler.assembleWriteTimeZone(mMokoDevice.deviceId, time_zone);
+        byte[] message = MQTTMessageAssembler.assembleWriteTimeZone(mMokoDevice.mac, time_zone);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
-
     private void getSystemTime() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadSystemTime(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadSystemTime(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setSystemTime() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
         Calendar calendar = Calendar.getInstance();
         int time = (int) (calendar.getTimeInMillis() / 1000);
-        byte[] message = MQTTMessageAssembler.assembleWriteSystemTime(mMokoDevice.deviceId, time);
+        byte[] message = MQTTMessageAssembler.assembleWriteSystemTime(mMokoDevice.mac, time);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -242,5 +217,15 @@ public class SystemTimeActivity extends BaseActivity<ActivitySystemTimeBinding> 
             mSyncTimeHandler.removeMessages(0);
         if (mHandler.hasMessages(0))
             mHandler.removeMessages(0);
+    }
+
+    private String getAppTopTic() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        return appTopic;
     }
 }

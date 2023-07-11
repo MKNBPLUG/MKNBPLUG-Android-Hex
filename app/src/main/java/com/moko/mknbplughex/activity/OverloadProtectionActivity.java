@@ -72,7 +72,7 @@ public class OverloadProtectionActivity extends BaseActivity<ActivityOverloadPro
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_OVER_LOAD_PROTECTION && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -110,15 +110,9 @@ public class OverloadProtectionActivity extends BaseActivity<ActivityOverloadPro
     }
 
     private void getOverloadProtection() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadOverloadProtection(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadOverloadProtection(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -165,17 +159,21 @@ public class OverloadProtectionActivity extends BaseActivity<ActivityOverloadPro
     }
 
     private void setOverloadProtection(int powerThreshold, int timeThreshold) {
+        byte[] message = MQTTMessageAssembler.assembleWriteOverloadProtection(mMokoDevice.mac, mBind.cbOverloadProtection.isChecked() ? 1 : 0, powerThreshold, timeThreshold);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleWriteOverloadProtection(mMokoDevice.deviceId, mBind.cbOverloadProtection.isChecked() ? 1 : 0, powerThreshold, timeThreshold);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }

@@ -35,7 +35,6 @@ import com.moko.support.hex.entity.MQTTConfig;
 import com.moko.support.hex.event.DeviceDeletedEvent;
 import com.moko.support.hex.event.DeviceModifyNameEvent;
 import com.moko.support.hex.event.DeviceOnlineEvent;
-import com.moko.support.hex.event.DeviceUpdateEvent;
 import com.moko.support.hex.event.MQTTConnectionCompleteEvent;
 import com.moko.support.hex.event.MQTTConnectionFailureEvent;
 import com.moko.support.hex.event.MQTTConnectionLostEvent;
@@ -187,7 +186,7 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
         // 修改了设备名称
         if (!devices.isEmpty()) {
             for (MokoDevice device : devices) {
-                if (device.deviceId.equals(event.getDeviceId())) {
+                if (device.mac.equalsIgnoreCase(event.getDeviceMac())) {
                     device.name = event.getName();
                     break;
                 }
@@ -215,37 +214,36 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDeviceUpdateEvent(DeviceUpdateEvent event) {
-        String deviceId = event.getDeviceId();
-        if (TextUtils.isEmpty(deviceId))
-            return;
-        MokoDevice mokoDevice = DBTools.getInstance(this).selectDevice(deviceId);
-        if (devices.isEmpty()) {
-            devices.add(mokoDevice);
-        } else {
-            Iterator<MokoDevice> iterator = devices.iterator();
-            while (iterator.hasNext()) {
-                MokoDevice device = iterator.next();
-                if (deviceId.equals(device.deviceId)) {
-                    iterator.remove();
-                    break;
-                }
-            }
-            devices.add(mokoDevice);
-        }
-    }
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onDeviceUpdateEvent(DeviceUpdateEvent event) {
+//        String deviceId = event.getDeviceId();
+//        if (TextUtils.isEmpty(deviceId))
+//            return;
+//        MokoDevice mokoDevice = DBTools.getInstance(this).selectDevice(deviceId);
+//        if (devices.isEmpty()) {
+//            devices.add(mokoDevice);
+//        } else {
+//            Iterator<MokoDevice> iterator = devices.iterator();
+//            while (iterator.hasNext()) {
+//                MokoDevice device = iterator.next();
+//                if (deviceId.equals(device.deviceId)) {
+//                    iterator.remove();
+//                    break;
+//                }
+//            }
+//            devices.add(mokoDevice);
+//        }
+//    }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onDeviceOnlineEvent(DeviceOnlineEvent event) {
-        String deviceId = event.getDeviceId();
-        if (devices == null || devices.size() == 0 || event.isOnline())
-            return;
+        String mac = event.getMac();
+        if (devices == null || devices.size() == 0 || event.isOnline()) return;
         for (MokoDevice mokoDevice : devices) {
-            if (deviceId.equals(mokoDevice.deviceId)) {
+            if (mac.equalsIgnoreCase(mokoDevice.mac)) {
                 mokoDevice.isOnline = false;
                 mokoDevice.on_off = false;
-                XLog.i(mokoDevice.deviceId + "离线");
+                XLog.i(mokoDevice.mac + "离线");
                 adapter.replaceData(devices);
                 break;
             }
@@ -259,17 +257,16 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
         setIntent(intent);
         if (getIntent().getExtras() != null) {
             String from = getIntent().getStringExtra(AppConstants.EXTRA_KEY_FROM_ACTIVITY);
-            String deviceId = getIntent().getStringExtra(AppConstants.EXTRA_KEY_DEVICE_ID);
+            String deviceMac = getIntent().getStringExtra(AppConstants.EXTRA_KEY_DEVICE_MAC);
             if (ModifyNameActivity.TAG.equals(from)
-                    || PlugSettingActivity.TAG.equals(from)) {
+                    || PlugSettingActivity.TAG.equals(from) || AddDeviceSuccessActivity.TAG.equals(from)) {
                 devices.clear();
                 devices.addAll(DBTools.getInstance(this).selectAllDevice());
-                if (!TextUtils.isEmpty(deviceId)) {
-                    MokoDevice mokoDevice = DBTools.getInstance(this).selectDevice(deviceId);
-                    if (mokoDevice == null)
-                        return;
+                if (!TextUtils.isEmpty(deviceMac)) {
+                    MokoDevice mokoDevice = DBTools.getInstance(this).selectDeviceByMac(deviceMac);
+                    if (mokoDevice == null) return;
                     for (final MokoDevice device : devices) {
-                        if (deviceId.equals(device.deviceId)) {
+                        if (deviceMac.equals(device.mac)) {
                             device.isOnline = true;
                             break;
                         }
@@ -285,10 +282,10 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
                 }
             }
             if (ModifyMQTTSettingsActivity.TAG.equals(from)) {
-                if (!TextUtils.isEmpty(deviceId)) {
-                    MokoDevice mokoDevice = DBTools.getInstance(this).selectDevice(deviceId);
+                if (!TextUtils.isEmpty(deviceMac)) {
+                    MokoDevice mokoDevice = DBTools.getInstance(this).selectDeviceByMac(deviceMac);
                     for (final MokoDevice device : devices) {
-                        if (deviceId.equals(device.deviceId)) {
+                        if (deviceMac.equalsIgnoreCase(device.mac)) {
                             if (!device.topicPublish.equals(mokoDevice.topicPublish)) {
                                 // 取消订阅
                                 try {
@@ -378,7 +375,7 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
             appTopic = appMqttConfig.topicPublish;
         }
         device.on_off = !device.on_off;
-        byte[] message = MQTTMessageAssembler.assembleWriteSwitchInfo(device.deviceId, device.on_off ? 1 : 0);
+        byte[] message = MQTTMessageAssembler.assembleWriteSwitchInfo(device.mac, device.on_off ? 1 : 0);
         try {
             MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {
@@ -389,13 +386,12 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
     @Override
     public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
         MokoDevice mokoDevice = (MokoDevice) adapter.getItem(position);
-        if (mokoDevice == null)
-            return;
+        if (mokoDevice == null) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
             return;
         }
-        Intent i = new Intent(HEXMainActivity.this, PlugActivity.class);
+        Intent i = new Intent(this, PlugActivity.class);
         i.putExtra(AppConstants.EXTRA_KEY_DEVICE, mokoDevice);
         startActivity(i);
     }
@@ -435,9 +431,7 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
                 e.printStackTrace();
             }
         } else {
-            if (devices.isEmpty()) {
-                return;
-            }
+            if (devices.isEmpty()) return;
             for (MokoDevice device : devices) {
                 try {
                     MQTTSupport.getInstance().subscribe(device.topicPublish, appMqttConfig.qos);
@@ -461,7 +455,7 @@ public class HEXMainActivity extends BaseActivity<ActivityMainHexBinding> implem
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
         for (final MokoDevice device : devices) {
-            if (device.deviceId.equals(deviceId)) {
+            if (device.mac.equalsIgnoreCase(deviceId)) {
                 device.isOnline = true;
                 if (cmd == MQTTConstants.NOTIFY_MSG_ID_SWITCH_STATE && flag == 2) {
                     if (dataLength != 11) return;

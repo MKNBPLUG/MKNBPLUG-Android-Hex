@@ -84,7 +84,7 @@ public class IndicatorColorActivity extends BaseActivity<ActivityIndicatorColorB
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_INDICATOR_STATUS_COLOR && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -104,6 +104,12 @@ public class IndicatorColorActivity extends BaseActivity<ActivityIndicatorColorB
             mBind.etOrange.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 7, 9))));
             mBind.etRed.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 9, 11))));
             mBind.etPurple.setText(String.valueOf(MokoUtils.toInt(Arrays.copyOfRange(data, 11, 13))));
+            mBind.etBlue.setSelection(mBind.etBlue.getText().length());
+            mBind.etGreen.setSelection(mBind.etGreen.getText().length());
+            mBind.etYellow.setSelection(mBind.etYellow.getText().length());
+            mBind.etOrange.setSelection(mBind.etOrange.getText().length());
+            mBind.etRed.setSelection(mBind.etRed.getText().length());
+            mBind.etPurple.setSelection(mBind.etPurple.getText().length());
         }
         if (cmd == MQTTConstants.MSG_ID_INDICATOR_STATUS_COLOR && flag == 1) {
             if (mHandler.hasMessages(0)) {
@@ -132,15 +138,9 @@ public class IndicatorColorActivity extends BaseActivity<ActivityIndicatorColorB
 
     private void getColorSettings() {
         XLog.i("读取颜色范围");
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadIndicatorColor(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadIndicatorColor(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -235,18 +235,22 @@ public class IndicatorColorActivity extends BaseActivity<ActivityIndicatorColorB
         }, 30 * 1000);
         showLoadingProgressDialog();
         XLog.i("设置颜色范围");
+        byte[] message = MQTTMessageAssembler.assembleWriteIndicatorColor(mMokoDevice.mac, mBind.npvColorSettings.getValue()
+                , blueValue, greenValue, yellowValue, orangeValue, redValue, purpleValue);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleWriteIndicatorColor(mMokoDevice.deviceId, mBind.npvColorSettings.getValue()
-                , blueValue, greenValue, yellowValue, orangeValue, redValue, purpleValue);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }

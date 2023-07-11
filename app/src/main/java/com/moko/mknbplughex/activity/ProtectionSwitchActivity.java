@@ -69,9 +69,9 @@ public class ProtectionSwitchActivity extends BaseActivity<ActivityProtectionSwi
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
-        if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_TYPE) {
+        if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_STANDARD) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
@@ -143,7 +143,7 @@ public class ProtectionSwitchActivity extends BaseActivity<ActivityProtectionSwi
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleReadDeviceType(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadDeviceStandard(mMokoDevice.mac);
         try {
             MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
         } catch (MqttException e) {

@@ -4,11 +4,9 @@ package com.moko.mknbplughex.entity;
 import java.io.Serializable;
 
 public class MokoDevice implements Serializable {
-
     public int id;
     public String name;
     public String mac;
-    public String deviceId;
     public String mqttInfo;
     public String topicPublish;
     public String topicSubscribe;

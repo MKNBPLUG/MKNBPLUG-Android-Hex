@@ -72,7 +72,7 @@ public class SyncTimeFromNTPActivity extends BaseActivity<ActivitySyncTimeFromNt
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_NTP_PARAMS && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -106,21 +106,14 @@ public class SyncTimeFromNTPActivity extends BaseActivity<ActivitySyncTimeFromNt
         }
     }
 
-
     public void onBack(View view) {
         finish();
     }
 
     private void getSyncFromNTP() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadNTPParams(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadNTPParams(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -158,20 +151,22 @@ public class SyncTimeFromNTPActivity extends BaseActivity<ActivitySyncTimeFromNt
     }
 
     private void setSyncFromNTP(String ntpServer, int interval) {
+        byte[] message = MQTTMessageAssembler.assembleWriteNTPParams(mMokoDevice.mac
+                , mBind.cbSyncSwitch.isChecked() ? 1 : 0, interval, ntpServer);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleWriteNTPParams(mMokoDevice.deviceId
-                , mBind.cbSyncSwitch.isChecked() ? 1 : 0
-                , interval
-                , ntpServer);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }

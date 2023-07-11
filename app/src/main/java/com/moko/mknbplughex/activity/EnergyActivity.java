@@ -86,7 +86,7 @@ public class EnergyActivity extends BaseActivity<ActivityEnergyBinding> implemen
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.NOTIFY_MSG_ID_ENERGY_HOURLY
                 || cmd == MQTTConstants.READ_MSG_ID_ENERGY_HOURLY) {
@@ -199,15 +199,9 @@ public class EnergyActivity extends BaseActivity<ActivityEnergyBinding> implemen
 
     private void getEnergyHourly() {
         XLog.i("查询当天每小时电能");
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadEnergyHourly(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadEnergyHourly(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -215,15 +209,9 @@ public class EnergyActivity extends BaseActivity<ActivityEnergyBinding> implemen
 
     private void getEnergyDaily() {
         XLog.i("查询最近30天电能");
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadEnergyDaily(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadEnergyDaily(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -231,15 +219,9 @@ public class EnergyActivity extends BaseActivity<ActivityEnergyBinding> implemen
 
     private void getEnergyTotal() {
         XLog.i("查询总累计电能");
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadEnergyTotal(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadEnergyTotal(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -308,17 +290,21 @@ public class EnergyActivity extends BaseActivity<ActivityEnergyBinding> implemen
 
     private void clearEnergy() {
         XLog.i("清除电能数据");
+        byte[] message = MQTTMessageAssembler.assembleConfigEnergyClear(mMokoDevice.mac);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleConfigEnergyClear(mMokoDevice.deviceId);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }

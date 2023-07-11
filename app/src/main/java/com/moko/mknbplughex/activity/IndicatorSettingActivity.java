@@ -57,8 +57,8 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
         }, 30 * 1000);
         getServerConnectingStatus();
         getServerConnectedStatus();
-        getPowerStatus();
-        getPowerProtectStatus();
+        getPowerOutputStatus();
+        getPowerInputStatus();
         getDeviceType();
     }
 
@@ -80,7 +80,7 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS && flag == 0) {
             if (dataLength != 1) return;
@@ -95,15 +95,15 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
         if (cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS && flag == 0) {
             if (dataLength != 1) return;
             mPowerStatus = data[0] == 1;
-            mBind.ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
-            mBind.tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
+            mBind.ivPowerOutput.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+            mBind.layoutIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
         }
-        if (cmd == MQTTConstants.MSG_ID_POWER_PROTECT && flag == 0) {
+        if (cmd == MQTTConstants.MSG_ID_INPUT_POWER_STATUS && flag == 0) {
             if (dataLength != 1) return;
             mPowerProtectStatus = data[0] == 1;
-            mBind.ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+            mBind.ivPowerInputStatus.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
-        if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_TYPE) {
+        if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_STANDARD) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
@@ -114,7 +114,7 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
         if (flag == 1 && (cmd == MQTTConstants.MSG_ID_NET_CONNECTING_STATUS
                 || cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS
                 || cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS
-                || cmd == MQTTConstants.MSG_ID_POWER_PROTECT)) {
+                || cmd == MQTTConstants.MSG_ID_INPUT_POWER_STATUS)) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
@@ -130,11 +130,11 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
             if (cmd == MQTTConstants.MSG_ID_NET_CONNECTED_STATUS)
                 mBind.tvServerConnected.setText(mServerConnectedValues.get(mServerConnectedSelected));
             if (cmd == MQTTConstants.MSG_ID_POWER_SWITCH_STATUS) {
-                mBind.ivIndicatorStatus.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
-                mBind.tvIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
+                mBind.ivPowerOutput.setImageResource(mPowerStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+                mBind.layoutIndicatorColor.setVisibility(mPowerStatus ? View.VISIBLE : View.GONE);
             }
-            if (cmd == MQTTConstants.MSG_ID_POWER_PROTECT)
-                mBind.ivProtectionSignal.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
+            if (cmd == MQTTConstants.MSG_ID_INPUT_POWER_STATUS)
+                mBind.ivPowerInputStatus.setImageResource(mPowerProtectStatus ? R.drawable.checkbox_open : R.drawable.checkbox_close);
         }
         if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
                 || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
@@ -150,140 +150,85 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
     }
 
     private void getServerConnectingStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadNetConnectingStatus(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadNetConnectingStatus(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void getServerConnectedStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadNetConnectedStatus(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadNetConnectedStatus(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
-    private void getPowerStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadPowerStatus(mMokoDevice.deviceId);
+    private void getPowerOutputStatus() {
+        byte[] message = MQTTMessageAssembler.assembleReadPowerStatus(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
-    private void getPowerProtectStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadPowerProtectStatus(mMokoDevice.deviceId);
+    private void getPowerInputStatus() {
+        byte[] message = MQTTMessageAssembler.assembleReadPowerInputStatus(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void getDeviceType() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadDeviceType(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadDeviceStandard(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setServerConnectingStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWriteNetConnectingStatus(mMokoDevice.deviceId, mServerConnectingStatus ? 1 : 0);
+        byte[] message = MQTTMessageAssembler.assembleWriteNetConnectingStatus(mMokoDevice.mac, mServerConnectingStatus ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setServerConnectedStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWriteNetConnectedStatus(mMokoDevice.deviceId, mServerConnectedSelected);
+        byte[] message = MQTTMessageAssembler.assembleWriteNetConnectedStatus(mMokoDevice.mac, mServerConnectedSelected);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setPowerStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWritePowerStatus(mMokoDevice.deviceId, mPowerStatus ? 1 : 0);
+        byte[] message = MQTTMessageAssembler.assembleWritePowerInputStatus(mMokoDevice.mac, mPowerStatus ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setPowerProtectStatus() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWritePowerProtectStatus(mMokoDevice.deviceId, mPowerProtectStatus ? 1 : 0);
+        byte[] message = MQTTMessageAssembler.assembleWritePowerProtectStatus(mMokoDevice.mac, mPowerProtectStatus ? 1 : 0);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
-
 
     public void onServerConnecting(View view) {
         if (isWindowLocked()) return;
@@ -320,7 +265,7 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
         dialog.show(getSupportFragmentManager());
     }
 
-    public void onIndicatorStatus(View view) {
+    public void onIndicatorColor(View view) {
         if (isWindowLocked()) return;
         if (!MQTTSupport.getInstance().isConnected()) {
             ToastUtils.showToast(this, R.string.network_error);
@@ -331,7 +276,6 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
         i.putExtra(AppConstants.EXTRA_KEY_DEVICE_TYPE, mDeviceType);
         startActivity(i);
     }
-
 
     public void onPowerStatus(View view) {
         if (isWindowLocked()) return;
@@ -361,5 +305,15 @@ public class IndicatorSettingActivity extends BaseActivity<ActivityIndicatorSett
             ToastUtils.showToast(this, "Set up failed");
         }, 30 * 1000);
         setPowerProtectStatus();
+    }
+
+    private String getAppTopTic() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        return appTopic;
     }
 }

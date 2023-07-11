@@ -13,7 +13,7 @@ import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.base.BaseActivity;
 import com.moko.mknbplughex.databinding.ActivityOtaBinding;
-import com.moko.mknbplughex.dialog.BottomDialog;
+import com.moko.mknbplughex.dialog.AlertMessageDialog;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.ToastUtils;
@@ -27,7 +27,6 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 public class OTAActivity extends BaseActivity<ActivityOtaBinding> {
@@ -35,8 +34,6 @@ public class OTAActivity extends BaseActivity<ActivityOtaBinding> {
     public static String TAG = OTAActivity.class.getSimpleName();
     private MokoDevice mMokoDevice;
     private MQTTConfig appMqttConfig;
-    private ArrayList<String> mValues;
-    private int mSelected;
     private Handler mHandler;
 
     @Override
@@ -50,27 +47,31 @@ public class OTAActivity extends BaseActivity<ActivityOtaBinding> {
             }
             return null;
         };
-        mBind.etMasterHost.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), inputFilter});
-        mBind.etOneWayHost.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), inputFilter});
-        mBind.etBothWayHost.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), inputFilter});
-        mBind.etMasterFilePath.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), inputFilter});
-        mBind.etOneWayCaFilePath.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), inputFilter});
-        mBind.etBothWayCaFilePath.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), inputFilter});
-        mBind.etBothWayClientKeyFilePath.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), inputFilter});
-        mBind.etBothWayClientCertFilePath.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), inputFilter});
+        mBind.etOtaUrl.setFilters(new InputFilter[]{new InputFilter.LengthFilter(256), inputFilter});
         mHandler = new Handler(Looper.getMainLooper());
         String mqttConfigAppStr = SPUtils.getStringValue(OTAActivity.this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         appMqttConfig = new Gson().fromJson(mqttConfigAppStr, MQTTConfig.class);
-        mValues = new ArrayList<>();
-        mValues.add("Firmware");
-        mValues.add("CA certificate");
-        mValues.add("Self signed server certificates");
-        mBind.tvUpdateType.setText(mValues.get(mSelected));
+        //首先读取设备的状态
+        showLoadingProgressDialog();
+        mHandler.postDelayed(() -> {
+            dismissLoadingProgressDialog();
+            finish();
+        }, 30 * 1000);
+        readDeviceStatus();
     }
 
     @Override
     protected ActivityOtaBinding getViewBinding() {
         return ActivityOtaBinding.inflate(getLayoutInflater());
+    }
+
+    private void readDeviceStatus() {
+        byte[] message = MQTTMessageAssembler.assembleReadDeviceWorkMode(mMokoDevice.mac);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -85,11 +86,31 @@ public class OTAActivity extends BaseActivity<ActivityOtaBinding> {
         String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
-        if (header != 0xED)
-            return;
-        if (!mMokoDevice.deviceId.equals(deviceId))
-            return;
+        if (header != 0xED) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
+        if (cmd == MQTTConstants.READ_MSG_ID_WORK_MODE) {
+            //读取设备工作模式
+            if (mHandler.hasMessages(0)) {
+                dismissLoadingProgressDialog();
+                mHandler.removeMessages(0);
+            }
+            if (dataLength != 1) {
+                ToastUtils.showToast(this, "get work mode fail");
+                finish();
+                return;
+            }
+            if (data[0] == 1) {
+                //debug mode
+                AlertMessageDialog dialog = new AlertMessageDialog();
+                dialog.setMessage("Device is in debug mode, OTA is unvailable!");
+                dialog.setCancelGone();
+                dialog.setConfirm("OK");
+                dialog.setOnAlertConfirmListener(this::finish);
+                dialog.show(getSupportFragmentManager());
+            }
+        }
+
         if (cmd == MQTTConstants.READ_MSG_ID_DEVICE_STATUS) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
@@ -106,31 +127,20 @@ public class OTAActivity extends BaseActivity<ActivityOtaBinding> {
                 ToastUtils.showToast(this, "Set up failed");
             }, 190 * 1000);
             showLoadingMessageDialog("waiting");
-            if (mSelected == 0) {
-                setOTAFirmware();
-            }
-            if (mSelected == 1) {
-                setOTAOneWay();
-            }
-            if (mSelected == 2) {
-                setOTABothWay();
-            }
+            setOTAFirmware();
         }
         if (cmd == MQTTConstants.NOTIFY_MSG_ID_OTA_RESULT) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingMessageDialog();
                 mHandler.removeMessages(0);
             }
-            if (data[5] != mSelected) return;
             if (data[6] == 1) {
                 ToastUtils.showToast(this, R.string.update_success);
             } else {
                 ToastUtils.showToast(this, R.string.update_failed);
             }
         }
-        if (cmd == MQTTConstants.CONFIG_MSG_ID_OTA
-                || cmd == MQTTConstants.CONFIG_MSG_ID_OTA_ONE_WAY
-                || cmd == MQTTConstants.CONFIG_MSG_ID_OTA_BOTH_WAY) {
+        if (cmd == MQTTConstants.CONFIG_MSG_ID_OTA) {
             if (dataLength != 1) return;
             if (data[0] == 0) {
                 dismissLoadingMessageDialog();
@@ -161,60 +171,9 @@ public class OTAActivity extends BaseActivity<ActivityOtaBinding> {
             ToastUtils.showToast(this, R.string.device_offline);
             return;
         }
-        if (mSelected == 0) {
-            String hostStr = mBind.etMasterHost.getText().toString();
-            String portStr = mBind.etMasterPort.getText().toString();
-            String masterStr = mBind.etMasterFilePath.getText().toString();
-            if (TextUtils.isEmpty(hostStr)) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_host);
-                return;
-            }
-            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) < 1 || Integer.parseInt(portStr) > 65535) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_port_empty);
-                return;
-            }
-            if (TextUtils.isEmpty(masterStr)) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_file_path);
-                return;
-            }
-        }
-        if (mSelected == 1) {
-            String hostStr = mBind.etOneWayHost.getText().toString();
-            String portStr = mBind.etOneWayPort.getText().toString();
-            String oneWayStr = mBind.etOneWayCaFilePath.getText().toString();
-            if (TextUtils.isEmpty(hostStr)) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_host);
-                return;
-            }
-            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) < 1 || Integer.parseInt(portStr) > 65535) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_port_empty);
-                return;
-            }
-            if (TextUtils.isEmpty(oneWayStr)) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_file_path);
-                return;
-            }
-        }
-        if (mSelected == 2) {
-            String hostStr = mBind.etBothWayHost.getText().toString();
-            String portStr = mBind.etBothWayPort.getText().toString();
-            String bothWayCaStr = mBind.etBothWayCaFilePath.getText().toString();
-            String bothWayClientKeyStr = mBind.etBothWayClientKeyFilePath.getText().toString();
-            String bothWayClientCertStr = mBind.etBothWayClientCertFilePath.getText().toString();
-            if (TextUtils.isEmpty(hostStr)) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_host);
-                return;
-            }
-            if (TextUtils.isEmpty(portStr) || Integer.parseInt(portStr) < 1 || Integer.parseInt(portStr) > 65535) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_port_empty);
-                return;
-            }
-            if (TextUtils.isEmpty(bothWayCaStr)
-                    || TextUtils.isEmpty(bothWayClientKeyStr)
-                    || TextUtils.isEmpty(bothWayClientCertStr)) {
-                ToastUtils.showToast(this, R.string.mqtt_verify_file_path);
-                return;
-            }
+        if (TextUtils.isEmpty(mBind.etOtaUrl.getText())) {
+            ToastUtils.showToast(this, "params error");
+            return;
         }
         XLog.i("检查设备状态");
         mHandler.postDelayed(() -> {
@@ -222,112 +181,31 @@ public class OTAActivity extends BaseActivity<ActivityOtaBinding> {
             ToastUtils.showToast(this, "Setup failed, please try it again!");
         }, 30 * 1000);
         showLoadingProgressDialog();
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadDeviceStatus(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadDeviceStatus(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
-    }
-
-    public void onSelectUpdateType(View view) {
-        BottomDialog dialog = new BottomDialog();
-        dialog.setDatas(mValues, mSelected);
-        dialog.setListener(value -> {
-            mSelected = value;
-            switch (value) {
-                case 0:
-                    mBind.llMasterFirmware.setVisibility(View.VISIBLE);
-                    mBind.llOneWay.setVisibility(View.GONE);
-                    mBind.llBothWay.setVisibility(View.GONE);
-                    break;
-                case 1:
-                    mBind.llMasterFirmware.setVisibility(View.GONE);
-                    mBind.llOneWay.setVisibility(View.VISIBLE);
-                    mBind.llBothWay.setVisibility(View.GONE);
-                    break;
-                case 2:
-                    mBind.llMasterFirmware.setVisibility(View.GONE);
-                    mBind.llOneWay.setVisibility(View.GONE);
-                    mBind.llBothWay.setVisibility(View.VISIBLE);
-                    break;
-            }
-            mBind.tvUpdateType.setText(mValues.get(value));
-        });
-        dialog.show(getSupportFragmentManager());
     }
 
     private void setOTAFirmware() {
-        String host = mBind.etMasterHost.getText().toString();
-        String portStr = mBind.etMasterPort.getText().toString();
-        String filePath = mBind.etMasterFilePath.getText().toString();
-
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWriteOTA(mMokoDevice.deviceId
-                , host
-                , Integer.parseInt(portStr)
-                , filePath);
+        String filePath = mBind.etOtaUrl.getText().toString();
+        byte[] message = MQTTMessageAssembler.assembleWriteOTA(mMokoDevice.mac, filePath);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
-    private void setOTAOneWay() {
-        String hostStr = mBind.etOneWayHost.getText().toString();
-        String portStr = mBind.etOneWayPort.getText().toString();
-        String oneWayStr = mBind.etOneWayCaFilePath.getText().toString();
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleWriteCaFileOTA(mMokoDevice.deviceId
-                , hostStr
-                , Integer.parseInt(portStr)
-                , oneWayStr);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setOTABothWay() {
-        String hostStr = mBind.etBothWayHost.getText().toString();
-        String portStr = mBind.etBothWayPort.getText().toString();
-        String bothWayCaStr = mBind.etBothWayCaFilePath.getText().toString();
-        String bothWayClientKeyStr = mBind.etBothWayClientKeyFilePath.getText().toString();
-        String bothWayClientCertStr = mBind.etBothWayClientCertFilePath.getText().toString();
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleWriteSelfSingleCertOTA(mMokoDevice.deviceId
-                , hostStr
-                , Integer.parseInt(portStr)
-                , bothWayCaStr
-                , bothWayClientCertStr
-                , bothWayClientKeyStr);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }

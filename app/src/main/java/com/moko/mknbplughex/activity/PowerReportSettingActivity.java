@@ -63,7 +63,7 @@ public class PowerReportSettingActivity extends BaseActivity<ActivityPowerReport
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equals(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_POWER_REPORT_SETTING && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -100,31 +100,18 @@ public class PowerReportSettingActivity extends BaseActivity<ActivityPowerReport
     }
 
     private void getPowerReportSetting() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadPowerReportSetting(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadPowerReportSetting(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void setPowerReportSetting(int reportInterval, int reportThreshold) {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-
-        byte[] message = MQTTMessageAssembler.assembleWritePowerReportSetting(mMokoDevice.deviceId, reportInterval, reportThreshold);
+        byte[] message = MQTTMessageAssembler.assembleWritePowerReportSetting(mMokoDevice.mac, reportInterval, reportThreshold);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -159,9 +146,18 @@ public class PowerReportSettingActivity extends BaseActivity<ActivityPowerReport
             return false;
         }
         int powerReportInterval = Integer.parseInt(powerReportIntervalStr);
-        if ((powerReportInterval != 0 && powerReportInterval < 10) || powerReportInterval > 86400)
-            return false;
+        if (powerReportInterval > 86400) return false;
         int powerChangeThreshold = Integer.parseInt(powerChangeThresholdStr);
         return powerChangeThreshold <= 100;
+    }
+
+    private String getAppTopTic() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        return appTopic;
     }
 }

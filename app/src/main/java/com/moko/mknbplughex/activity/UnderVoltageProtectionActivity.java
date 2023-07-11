@@ -70,7 +70,7 @@ public class UnderVoltageProtectionActivity extends BaseActivity<ActivityUndervo
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
-        if (!mMokoDevice.deviceId.equals(deviceId)) return;
+        if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
         if (cmd == MQTTConstants.MSG_ID_UNDER_VOLTAGE_PROTECTION && flag == 0) {
             if (mHandler.hasMessages(0)) {
@@ -108,15 +108,9 @@ public class UnderVoltageProtectionActivity extends BaseActivity<ActivityUndervo
     }
 
     private void getUnderVoltageProtection() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
-        byte[] message = MQTTMessageAssembler.assembleReadUnderVoltageProtection(mMokoDevice.deviceId);
+        byte[] message = MQTTMessageAssembler.assembleReadUnderVoltageProtection(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -163,17 +157,21 @@ public class UnderVoltageProtectionActivity extends BaseActivity<ActivityUndervo
     }
 
     private void setOverloadProtection(int voltageThreshold, int timeThreshold) {
+        byte[] message = MQTTMessageAssembler.assembleWriteUnderVoltageProtection(mMokoDevice.mac, mBind.cbUndervoltageProtection.isChecked() ? 1 : 0, voltageThreshold, timeThreshold);
+        try {
+            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getAppTopTic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
         } else {
             appTopic = appMqttConfig.topicPublish;
         }
-        byte[] message = MQTTMessageAssembler.assembleWriteUnderVoltageProtection(mMokoDevice.deviceId, mBind.cbUndervoltageProtection.isChecked() ? 1 : 0, voltageThreshold, timeThreshold);
-        try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        return appTopic;
     }
 }
