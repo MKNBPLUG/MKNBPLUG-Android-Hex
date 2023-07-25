@@ -278,210 +278,319 @@ public class ModifyMQTTSettingsActivity extends BaseActivity<ActivityMqttDeviceM
                 }
             } else {
                 if (dataLength > 0) {
-                    mBind.etmq
+                    userFragment.setUserName(new String(data));
                 }
             }
         }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_PASSWORD && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setMQTTClientId();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_CLIENT_ID && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setMQTTCleanSession();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_CLEAN_SESSION && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setMQTTKeepAlive();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_KEEP_ALIVE && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setMQTTQos();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_QOS && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setMQTTSubscribeTopic();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_SUBSCRIBE_TOPIC && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setMQTTPublishTopic();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_PUBLISH_TOPIC && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setLWTEnable();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_LWT_ENABLE && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setLWTRetain();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_LWT_RETAIN && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setLWTQos();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_LWT_QOS && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setLWTTopic();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_LWT_TOPIC && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setLWTPayload();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_LWT_MESSAGE && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setAPN();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_APN && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setAPNUsername();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_APN_USERNAME && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setAPNPassword();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_APN_PASSWORD && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setNetworkPriority();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_NETWORK_PRIORITY && flag == 1) {
-            if (dataLength == 1 && data[0] == 1)
-                setMQTTEncryptionType();
-            else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
-                }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
-            }
-        }
-        if (cmd == MQTTConstants.MSG_ID_MQTT_SSL && flag == 1) {
-            if (dataLength == 1 && data[0] == 1) {
-                if (mMQTTSettings.encryption_type == 0) {
+        if (cmd == MQTTConstants.MSG_ID_MQTT_PASSWORD) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setMQTTClientId();
+                else {
                     if (mHandler.hasMessages(0)) {
                         dismissLoadingProgressDialog();
                         mHandler.removeMessages(0);
                     }
-                    showLoadingProgressDialog();
-                    mHandler.postDelayed(() -> {
-                        dismissLoadingProgressDialog();
-                        ToastUtils.showToast(this, "Setup failed, please try it again!");
-                    }, 30 * 1000);
-                    setConfigFinish();
-                } else if (mMQTTSettings.encryption_type == 1) {
-                    setCACertFile();
-                } else {
-                    setSelfSingleServerCertificates();
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
                 }
             } else {
-                if (mHandler.hasMessages(0)) {
-                    dismissLoadingProgressDialog();
-                    mHandler.removeMessages(0);
+                if (dataLength > 0) {
+                    userFragment.setPassword(new String(data));
                 }
-                ToastUtils.showToast(this, "Setup failed, please try it again!");
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_MQTT_CLIENT_ID) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setMQTTCleanSession();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    mBind.etMqttClientId.setText(new String(data));
+                    mBind.etMqttClientId.setSelection(mBind.etMqttClientId.getText().length());
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_MQTT_CLEAN_SESSION) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setMQTTKeepAlive();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    generalFragment.setCleanSession(data[0] == 1);
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_MQTT_KEEP_ALIVE) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setMQTTQos();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    generalFragment.setKeepAlive(data[0] & 0xff);
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_MQTT_QOS) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setMQTTSubscribeTopic();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    generalFragment.setQos(data[0]);
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_MQTT_SUBSCRIBE_TOPIC) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setMQTTPublishTopic();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    mBind.etMqttSubscribeTopic.setText(new String(data));
+                    mBind.etMqttSubscribeTopic.setSelection(mBind.etMqttSubscribeTopic.getText().length());
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_MQTT_PUBLISH_TOPIC) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setLWTEnable();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    mBind.etMqttPublishTopic.setText(new String(data));
+                    mBind.etMqttPublishTopic.setSelection(mBind.etMqttSubscribeTopic.getText().length());
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_LWT_ENABLE) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setLWTRetain();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    lwtFragment.setLwtEnable(data[0] == 1);
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_LWT_RETAIN) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setLWTQos();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    lwtFragment.setLwtRetain(data[0] == 1);
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_LWT_QOS) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setLWTTopic();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    lwtFragment.setQos(data[0]);
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_LWT_TOPIC) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setLWTPayload();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    lwtFragment.setTopic(new String(data));
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_LWT_MESSAGE) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setAPN();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    lwtFragment.setPayload(new String(data));
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_APN) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setAPNUsername();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    mBind.etApn.setText(new String(data));
+                    mBind.etApn.setSelection(mBind.etApn.getText().length());
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_APN_USERNAME) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setAPNPassword();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    mBind.etApnUsername.setText(new String(data));
+                    mBind.etApnUsername.setSelection(mBind.etApnUsername.getText().length());
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_APN_PASSWORD) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setNetworkPriority();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength > 0) {
+                    mBind.etApnPassword.setText(new String(data));
+                    mBind.etApnPassword.setSelection(mBind.etApnPassword.getText().length());
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_NETWORK_PRIORITY) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1)
+                    setMQTTEncryptionType();
+                else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    mSelectedNetworkPriority = data[0];
+                    mBind.tvNetworkPriority.setText(mNetworkPriority.get(mSelectedNetworkPriority));
+                }
+            }
+        }
+        if (cmd == MQTTConstants.MSG_ID_MQTT_SSL) {
+            if (flag == 1) {
+                if (dataLength == 1 && data[0] == 1) {
+                    if (mMQTTSettings.encryption_type == 0) {
+                        if (mHandler.hasMessages(0)) {
+                            dismissLoadingProgressDialog();
+                            mHandler.removeMessages(0);
+                        }
+                        showLoadingProgressDialog();
+                        mHandler.postDelayed(() -> {
+                            dismissLoadingProgressDialog();
+                            ToastUtils.showToast(this, "Setup failed, please try it again!");
+                        }, 30 * 1000);
+                        setConfigFinish();
+                    } else if (mMQTTSettings.encryption_type == 1) {
+                        setCACertFile();
+                    } else {
+                        setSelfSingleServerCertificates();
+                    }
+                } else {
+                    if (mHandler.hasMessages(0)) {
+                        dismissLoadingProgressDialog();
+                        mHandler.removeMessages(0);
+                    }
+                    ToastUtils.showToast(this, "Setup failed, please try it again!");
+                }
+            } else {
+                if (dataLength == 1) {
+                    sslFragment.setConnectMode(data[0]);
+                }
             }
         }
         if (cmd == MQTTConstants.CONFIG_MSG_ID_CA_CERTIFICATE) {

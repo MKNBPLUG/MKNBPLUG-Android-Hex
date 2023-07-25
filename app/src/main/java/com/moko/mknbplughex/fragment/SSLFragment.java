@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.elvishew.xlog.XLog;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.databinding.FragmentSslAppBinding;
 import com.moko.mknbplughex.dialog.BottomDialog;
@@ -61,10 +62,13 @@ public class SSLFragment extends Fragment {
             } else {
                 connectMode = selected + 1;
             }
-            mBind.clCertificate.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            mBind.clCertificate.setVisibility(connectMode > 0 ? View.VISIBLE : View.GONE);
+            XLog.i("333333mode="+connectMode);
+            if (connectMode > 0) setSSL();
         });
         values = new ArrayList<>();
-        values.add("CA certificate file");
+        values.add("CA signed server certificate");
+        values.add("CA certificate");
         values.add("Self signed certificates");
         if (connectMode > 0) {
             selected = connectMode - 1;
@@ -73,14 +77,27 @@ public class SSLFragment extends Fragment {
             mBind.tvClientCertFile.setText(clientCertPath);
             mBind.tvCertification.setText(values.get(selected));
         }
-        if (selected == 0) {
+        setSSL();
+        return mBind.getRoot();
+    }
+
+    private void setSSL() {
+        if (connectMode == 1) {
+            mBind.layoutCertificate.setVisibility(View.VISIBLE);
+            mBind.llCa.setVisibility(View.GONE);
             mBind.llClientKey.setVisibility(View.GONE);
             mBind.llClientCert.setVisibility(View.GONE);
-        } else if (selected == 1) {
+        } else if (connectMode == 2) {
+            mBind.layoutCertificate.setVisibility(View.VISIBLE);
+            mBind.llCa.setVisibility(View.VISIBLE);
+            mBind.llClientKey.setVisibility(View.GONE);
+            mBind.llClientCert.setVisibility(View.GONE);
+        } else if (connectMode == 3) {
+            mBind.layoutCertificate.setVisibility(View.VISIBLE);
+            mBind.llCa.setVisibility(View.VISIBLE);
             mBind.llClientKey.setVisibility(View.VISIBLE);
             mBind.llClientCert.setVisibility(View.VISIBLE);
         }
-        return mBind.getRoot();
     }
 
     @Override
@@ -109,13 +126,7 @@ public class SSLFragment extends Fragment {
         if (connectMode > 0) {
             selected = connectMode - 1;
             mBind.tvCertification.setText(values.get(selected));
-            if (selected == 0) {
-                mBind.llClientKey.setVisibility(View.GONE);
-                mBind.llClientCert.setVisibility(View.GONE);
-            } else if (selected == 1) {
-                mBind.llClientKey.setVisibility(View.VISIBLE);
-                mBind.llClientCert.setVisibility(View.VISIBLE);
-            }
+            setSSL();
         }
     }
 
@@ -140,14 +151,8 @@ public class SSLFragment extends Fragment {
         dialog.setListener(value -> {
             selected = value;
             mBind.tvCertification.setText(values.get(selected));
-            if (selected == 0) {
-                mBind.llClientKey.setVisibility(View.GONE);
-                mBind.llClientCert.setVisibility(View.GONE);
-            } else if (selected == 1) {
-                mBind.llClientKey.setVisibility(View.VISIBLE);
-                mBind.llClientCert.setVisibility(View.VISIBLE);
-            }
             connectMode = selected + 1;
+            setSSL();
         });
         if (null != getActivity()) dialog.show(getActivity().getSupportFragmentManager());
     }
@@ -219,12 +224,12 @@ public class SSLFragment extends Fragment {
         final String caFile = mBind.tvCaFile.getText().toString();
         final String clientKeyFile = mBind.tvClientKeyFile.getText().toString();
         final String clientCertFile = mBind.tvClientCertFile.getText().toString();
-        if (connectMode == 1) {
+        if (connectMode == 2) {
             if (TextUtils.isEmpty(caFile)) {
                 ToastUtils.showToast(requireContext(), getString(R.string.mqtt_verify_ca));
                 return false;
             }
-        } else if (connectMode == 2) {
+        } else if (connectMode == 3) {
             if (TextUtils.isEmpty(caFile)) {
                 ToastUtils.showToast(requireContext(), getString(R.string.mqtt_verify_ca));
                 return false;

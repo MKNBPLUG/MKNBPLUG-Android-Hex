@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools"
     android:background="@color/grey_f2f2f2"
     android:orientation="vertical">
 
@@ -365,9 +365,9 @@
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
+                android:layout_marginTop="12dp"
                 android:background="@color/white_ffffff"
                 android:clickable="true"
-                android:layout_marginTop="12dp"
                 android:onClick="onDeviceInfo">
 
                 <TextView
@@ -394,9 +394,9 @@
                 android:layout_marginTop="12dp"
                 android:background="@color/white_ffffff"
                 android:clickable="true"
-                tools:visibility="visible"
                 android:onClick="onDebugModeClick"
-                android:visibility="gone">
+                android:visibility="gone"
+                tools:visibility="visible">
 
                 <TextView
                     android:layout_width="match_parent"
@@ -421,25 +421,10 @@
                 android:layout_weight="1.0" />
 
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="150dp"
                 android:layout_height="50dp"
-                android:layout_marginLeft="53dp"
+                android:layout_gravity="center_horizontal"
                 android:layout_marginTop="30dp"
-                android:layout_marginRight="53dp"
-                android:background="@drawable/shape_corner_btn_bg"
-                android:clickable="true"
-                android:gravity="center"
-                android:onClick="onRemove"
-                android:text="Remove Device"
-                android:textColor="@color/white_ffffff"
-                android:textSize="18sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginLeft="53dp"
-                android:layout_marginTop="30dp"
-                android:layout_marginRight="53dp"
                 android:background="@drawable/shape_corner_btn_bg"
                 android:clickable="true"
                 android:gravity="center"

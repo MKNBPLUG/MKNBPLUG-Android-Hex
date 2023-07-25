@@ -249,40 +249,6 @@ public class PlugSettingActivity extends BaseActivity<ActivityPlugSettingBinding
         setButtonControlEnable();
     }
 
-    public void onRemove(View view) {
-        if (isWindowLocked()) return;
-        AlertMessageDialog dialog = new AlertMessageDialog();
-        dialog.setTitle("Remove Device");
-        dialog.setMessage("Please confirm again whether to \n remove the device,the device \n will be deleted from the device list.");
-        dialog.setOnAlertConfirmListener(() -> {
-            if (!MQTTSupport.getInstance().isConnected()) {
-                ToastUtils.showToast(this, R.string.network_error);
-                return;
-            }
-            showLoadingProgressDialog();
-            if (TextUtils.isEmpty(appMqttConfig.topicSubscribe)) {
-                // 取消订阅
-                try {
-                    MQTTSupport.getInstance().unSubscribe(mMokoDevice.topicPublish);
-                } catch (MqttException e) {
-                    e.printStackTrace();
-                }
-            }
-            XLog.i(String.format("删除设备:%s", mMokoDevice.name));
-            DBTools.getInstance(this).deleteDevice(mMokoDevice);
-            EventBus.getDefault().post(new DeviceDeletedEvent(mMokoDevice.id));
-            mHandler.postDelayed(() -> {
-                dismissLoadingProgressDialog();
-                // 跳转首页，刷新数据
-                Intent intent = new Intent(this, HEXMainActivity.class);
-                intent.putExtra(AppConstants.EXTRA_KEY_FROM_ACTIVITY, TAG);
-                intent.putExtra(AppConstants.EXTRA_KEY_DEVICE_MAC, mMokoDevice.mac);
-                startActivity(intent);
-            }, 500);
-        });
-        dialog.show(getSupportFragmentManager());
-    }
-
     public void onReset(View view) {
         if (isWindowLocked()) return;
         AlertMessageDialog dialog = new AlertMessageDialog();

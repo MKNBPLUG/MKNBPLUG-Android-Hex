@@ -280,7 +280,7 @@ public class DeviceScannerActivity extends BaseActivity<ActivityScannerBinding> 
                             XLog.i("Success");
 
                             // 跳转配置页面
-                            Intent intent = new Intent(this, ChooseFunctionActivity.class);
+                            Intent intent = new Intent(this, SetDeviceMQTTActivity.class);
                             intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_MAC, mSelectedMac);
                             intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_NAME, mSelectedName);
                             intent.putExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_TYPE, mSelectedDeviceType);

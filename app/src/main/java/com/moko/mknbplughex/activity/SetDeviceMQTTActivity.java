@@ -487,7 +487,7 @@ public class SetDeviceMQTTActivity extends BaseActivity<ActivityMqttDeviceBindin
                 if (mokoDevice == null) {
                     mokoDevice = new MokoDevice();
                     mokoDevice.name = mSelectedDeviceName;
-                    mokoDevice.mac = mSelectedDeviceMac;
+                    mokoDevice.mac = mSelectedDeviceMac.toLowerCase();
                     mokoDevice.mqttInfo = mqttConfigStr;
                     mokoDevice.topicSubscribe = mqttDeviceConfig.topicSubscribe;
                     mokoDevice.topicPublish = mqttDeviceConfig.topicPublish;
@@ -496,7 +496,7 @@ public class SetDeviceMQTTActivity extends BaseActivity<ActivityMqttDeviceBindin
                     DBTools.getInstance(SetDeviceMQTTActivity.this).insertDevice(mokoDevice);
                 } else {
                     mokoDevice.name = mSelectedDeviceName;
-                    mokoDevice.mac = mSelectedDeviceMac;
+                    mokoDevice.mac = mSelectedDeviceMac.toLowerCase();
                     mokoDevice.mqttInfo = mqttConfigStr;
                     mokoDevice.topicSubscribe = mqttDeviceConfig.topicSubscribe;
                     mokoDevice.topicPublish = mqttDeviceConfig.topicPublish;
@@ -680,10 +680,10 @@ public class SetDeviceMQTTActivity extends BaseActivity<ActivityMqttDeviceBindin
                 orderTasks.add(OrderTaskAssembler.setMqttPassword(mqttDeviceConfig.password));
             }
             orderTasks.add(OrderTaskAssembler.setMqttConnectMode(mqttDeviceConfig.connectMode));
-            if (mqttDeviceConfig.connectMode == 1) {
+            if (mqttDeviceConfig.connectMode == 2) {
                 File file = new File(mqttDeviceConfig.caPath);
                 orderTasks.add(OrderTaskAssembler.setCA(file));
-            } else if (mqttDeviceConfig.connectMode == 2) {
+            } else if (mqttDeviceConfig.connectMode == 3) {
                 File caFile = new File(mqttDeviceConfig.caPath);
                 orderTasks.add(OrderTaskAssembler.setCA(caFile));
                 File clientKeyFile = new File(mqttDeviceConfig.clientKeyPath);
