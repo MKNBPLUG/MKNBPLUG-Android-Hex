@@ -35,6 +35,7 @@ public class ResetByButtonActivity extends BaseActivity<ActivityResetByButtonBin
     private MokoDevice mMokoDevice;
     private MQTTConfig appMqttConfig;
     private Handler mHandler;
+    private int resetType;
 
     @Override
     protected ActivityResetByButtonBinding getViewBinding() {
@@ -56,42 +57,36 @@ public class ResetByButtonActivity extends BaseActivity<ActivityResetByButtonBin
             finish();
         }, 30 * 1000);
         getResetByButton();
-        mBind.radio.setOnCheckedChangeListener((group, checkedId) -> {
-            int type = checkedId == R.id.btnAnyTime ? 1 : 0;
-            showLoadingProgressDialog();
-            mHandler.postDelayed(() -> {
-                dismissLoadingProgressDialog();
-                finish();
-            }, 30 * 1000);
-            setResetByButton(type);
+        mBind.imgMinute.setOnClickListener(v -> {
+            if (resetType == 0) return;
+            resetType = 0;
+            setResetByButton(0);
+        });
+        mBind.imgAnyTime.setOnClickListener(v -> {
+            if (resetType == 1) return;
+            resetType = 1;
+            setResetByButton(1);
         });
     }
 
     private void setResetByButton(int type) {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
+        showLoadingProgressDialog();
+        mHandler.postDelayed(() -> {
+            dismissLoadingProgressDialog();
+            finish();
+        }, 30 * 1000);
         byte[] message = MQTTMessageAssembler.assembleWriteResetByButton(mMokoDevice.mac, type);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getTopic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
     private void getResetByButton() {
-        String appTopic;
-        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
-            appTopic = mMokoDevice.topicSubscribe;
-        } else {
-            appTopic = appMqttConfig.topicPublish;
-        }
         byte[] message = MQTTMessageAssembler.assembleReadResetByButton(mMokoDevice.mac);
         try {
-            MQTTSupport.getInstance().publish(appTopic, message, appMqttConfig.qos);
+            MQTTSupport.getInstance().publish(getTopic(), message, appMqttConfig.qos);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -106,7 +101,7 @@ public class ResetByButtonActivity extends BaseActivity<ActivityResetByButtonBin
         int flag = message[1] & 0xFF;// read or write
         int cmd = message[2] & 0xFF;
         int deviceIdLength = message[3] & 0xFF;
-        String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
+        String deviceId = MokoUtils.bytesToHexString(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;
@@ -123,18 +118,40 @@ public class ResetByButtonActivity extends BaseActivity<ActivityResetByButtonBin
                 finish();
                 return;
             }
-            if (data[0] == 1) {
-                mBind.btnAnyTime.setChecked(true);
-            } else {
-                mBind.btnMinute.setChecked(true);
-            }
+            setImgType(data[0]);
+            resetType = data[0];
         }
         if (cmd == MQTTConstants.MSG_ID_RESET_BY_BUTTON && flag == 1) {
+            if (mHandler.hasMessages(0)) {
+                dismissLoadingProgressDialog();
+                mHandler.removeMessages(0);
+            }
             if (dataLength != 1 || data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
             ToastUtils.showToast(this, "Set up succeed");
+            setImgType(resetType);
+        }
+    }
+
+    private String getTopic() {
+        String appTopic;
+        if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
+            appTopic = mMokoDevice.topicSubscribe;
+        } else {
+            appTopic = appMqttConfig.topicPublish;
+        }
+        return appTopic;
+    }
+
+    private void setImgType(int type) {
+        if (type == 1) {
+            mBind.imgMinute.setImageResource(R.drawable.checkbox_close);
+            mBind.imgAnyTime.setImageResource(R.drawable.checkbox_open);
+        } else {
+            mBind.imgMinute.setImageResource(R.drawable.checkbox_open);
+            mBind.imgAnyTime.setImageResource(R.drawable.checkbox_close);
         }
     }
 

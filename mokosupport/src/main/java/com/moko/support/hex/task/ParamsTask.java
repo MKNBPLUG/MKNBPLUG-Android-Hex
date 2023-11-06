@@ -24,19 +24,7 @@ public class ParamsTask extends OrderTask {
     }
 
     public void setData(ParamsKeyEnum key) {
-        switch (key) {
-            case KEY_DEVICE_MAC:
-            case KEY_DEVICE_NAME:
-//            case KEY_PRODUCT_MODEL:
-//            case KEY_MANUFACTURER:
-//            case KEY_HARDWARE_VERSION:
-//            case KEY_SOFTWARE_VERSION:
-//            case KEY_FIRMWARE_VERSION:
-//            case KEY_DEVICE_TYPE:
-//            case KEY_CHANNEL_DOMAIN:
-                createGetConfigData(key.getParamsKey());
-                break;
-        }
+        createGetConfigData(key.getParamsKey());
     }
 
     private void createGetConfigData(int configKey) {

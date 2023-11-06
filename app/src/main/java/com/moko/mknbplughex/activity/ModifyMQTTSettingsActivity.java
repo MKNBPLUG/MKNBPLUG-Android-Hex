@@ -75,6 +75,7 @@ public class ModifyMQTTSettingsActivity extends BaseActivity<ActivityMqttDeviceM
             }
             return null;
         };
+        mHandler = new Handler(Looper.getMainLooper());
         mBind.etMqttHost.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), filter});
         mBind.etMqttClientId.setFilters(new InputFilter[]{new InputFilter.LengthFilter(64), filter});
         mBind.etMqttSubscribeTopic.setFilters(new InputFilter[]{new InputFilter.LengthFilter(128), filter});
@@ -115,7 +116,6 @@ public class ModifyMQTTSettingsActivity extends BaseActivity<ActivityMqttDeviceM
         });
         mBind.vpMqtt.setOffscreenPageLimit(4);
         mBind.rgMqtt.setOnCheckedChangeListener(this);
-        mHandler = new Handler(Looper.getMainLooper());
     }
 
     @Override
@@ -162,7 +162,7 @@ public class ModifyMQTTSettingsActivity extends BaseActivity<ActivityMqttDeviceM
         int flag = message[1] & 0xFF;// read or write
         int cmd = message[2] & 0xFF;
         int deviceIdLength = message[3] & 0xFF;
-        String deviceId = new String(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
+        String deviceId = MokoUtils.bytesToHexString(Arrays.copyOfRange(message, 4, 4 + deviceIdLength));
         int dataLength = MokoUtils.toInt(Arrays.copyOfRange(message, 4 + deviceIdLength, 6 + deviceIdLength));
         byte[] data = Arrays.copyOfRange(message, 6 + deviceIdLength, 6 + deviceIdLength + dataLength);
         if (header != 0xED) return;

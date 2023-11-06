@@ -26,46 +26,75 @@
             android:src="@drawable/back" />
     </RelativeLayout>
 
-    <RadioGroup
-        android:id="@+id/radio"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/white_ffffff"
+        android:orientation="vertical">
 
-        <RadioButton
-            android:id="@+id/btnMinute"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:checked="true"
+            android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:layoutDirection="rtl"
-            android:text="Press in 1 minute after powered"
-            android:textColor="@color/black_333333"
-            android:textDirection="ltr"
-            android:textSize="16sp" />
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0px"
+                android:layout_height="50dp"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="Press in 1 minute after powered"
+                android:textColor="@color/black_333333"
+                android:textSize="16sp" />
+
+            <ImageView
+                android:id="@+id/imgMinute"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="5dp"
+                android:src="@drawable/checkbox_close" />
+        </LinearLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="@color/grey_ebebeb" />
 
-        <RadioButton
-            android:id="@+id/btnAnyTime"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:layoutDirection="rtl"
-            android:text="Press any time"
-            android:textColor="@color/black_333333"
-            android:textDirection="ltr"
-            android:textSize="16sp" />
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0px"
+                android:layout_height="50dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="Press any time"
+                android:textColor="@color/black_333333"
+                android:textSize="16sp" />
+
+            <ImageView
+                android:id="@+id/imgAnyTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="5dp"
+                android:src="@drawable/checkbox_close" />
+        </LinearLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="@color/grey_ebebeb" />
-    </RadioGroup>
+    </LinearLayout>
 </LinearLayout>

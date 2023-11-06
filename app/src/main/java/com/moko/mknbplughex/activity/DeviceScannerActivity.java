@@ -107,12 +107,12 @@ public class DeviceScannerActivity extends BaseActivity<ActivityScannerBinding> 
         SparseArray<byte[]> manufacturer = scanRecord.getManufacturerSpecificData();
         if (manufacturer == null || manufacturer.size() == 0) return;
         byte[] manufacturerSpecificDataByte = scanRecord.getManufacturerSpecificData(0xAA08);
-        if (null == manufacturerSpecificDataByte || manufacturerSpecificDataByte.length != 7)
+        if (null == manufacturerSpecificDataByte || manufacturerSpecificDataByte.length != 15)
             return;
         byte[] bytes = scanRecord.getServiceData(new ParcelUuid(OrderServices.SERVICE_ADV.getUuid()));
         if (null == bytes || bytes.length != 1) return;
         int deviceType = bytes[0] & 0xFF;
-        deviceInfo.deviceMode = manufacturerSpecificDataByte[6] & 0xFF;
+        deviceInfo.deviceMode = manufacturerSpecificDataByte[14] & 0xFF;
         deviceInfo.deviceType = deviceType;
         mDeviceMap.put(deviceInfo.mac, deviceInfo);
     }
