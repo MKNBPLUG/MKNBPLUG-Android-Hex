@@ -36,9 +36,7 @@ public final class MokoBleScanner {
 
     public void startScanDevice(MokoScanDeviceCallback callback) {
         mMokoScanDeviceCallback = callback;
-        if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            XLog.i("Start scan");
-        }
+        XLog.i("Start scan");
         final BluetoothLeScannerCompat scanner = BluetoothLeScannerCompat.getScanner();
         ScanSettings settings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
@@ -55,9 +53,7 @@ public final class MokoBleScanner {
 
     public void stopScanDevice() {
         if (mMokoLeScanHandler != null && mMokoScanDeviceCallback != null) {
-            if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                XLog.i("End scan");
-            }
+            XLog.i("End scan");
             final BluetoothLeScannerCompat scanner = BluetoothLeScannerCompat.getScanner();
             scanner.stopScan(mMokoLeScanHandler);
             mMokoScanDeviceCallback.onStopScan();
