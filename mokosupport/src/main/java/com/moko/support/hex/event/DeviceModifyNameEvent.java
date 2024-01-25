@@ -1,16 +1,15 @@
 package com.moko.support.hex.event;
 
 public class DeviceModifyNameEvent {
-
-    private String deviceId;
+    private String deviceMac;
     private String name;
 
-    public DeviceModifyNameEvent(String deviceId) {
-        this.deviceId = deviceId;
+    public DeviceModifyNameEvent(String deviceMac) {
+        this.deviceMac = deviceMac;
     }
 
-    public String getDeviceId() {
-        return deviceId;
+    public String getDeviceMac() {
+        return deviceMac;
     }
 
     public String getName() {

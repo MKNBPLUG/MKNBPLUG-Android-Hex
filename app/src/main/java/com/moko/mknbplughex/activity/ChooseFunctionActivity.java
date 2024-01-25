@@ -4,17 +4,18 @@ import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.elvishew.xlog.XLog;
 import com.moko.ble.lib.MokoConstants;
 import com.moko.ble.lib.event.ConnectStatusEvent;
 import com.moko.mknbplughex.AppConstants;
-import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.base.BaseActivity;
+import com.moko.mknbplughex.databinding.ActivityChooseFunctionBinding;
 import com.moko.mknbplughex.dialog.AlertMessageDialog;
 import com.moko.mknbplughex.service.DfuService;
 import com.moko.mknbplughex.utils.FileUtils;
@@ -27,29 +28,27 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import butterknife.ButterKnife;
 import no.nordicsemi.android.dfu.DfuProgressListener;
 import no.nordicsemi.android.dfu.DfuProgressListenerAdapter;
 import no.nordicsemi.android.dfu.DfuServiceInitiator;
 import no.nordicsemi.android.dfu.DfuServiceListenerHelper;
 
-
-public class ChooseFunctionActivity extends BaseActivity {
+public class ChooseFunctionActivity extends BaseActivity<ActivityChooseFunctionBinding> {
     public static final int REQUEST_CODE_SELECT_FIRMWARE = 0x10;
-
     private int mSelectedDeviceType;
     private String mSelectedDeviceName;
     private String mSelectedDeviceMac;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_choose_function);
-        ButterKnife.bind(this);
+    protected void onCreate() {
         mSelectedDeviceName = getIntent().getStringExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_NAME);
         mSelectedDeviceMac = getIntent().getStringExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_MAC);
         mSelectedDeviceType = getIntent().getIntExtra(AppConstants.EXTRA_KEY_SELECTED_DEVICE_TYPE, 0);
+    }
+
+    @Override
+    protected ActivityChooseFunctionBinding getViewBinding() {
+        return ActivityChooseFunctionBinding.inflate(getLayoutInflater());
     }
 
     @Override
@@ -63,11 +62,9 @@ public class ChooseFunctionActivity extends BaseActivity {
 
 
     public void onBack(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         back();
     }
-
 
     @Subscribe(threadMode = ThreadMode.POSTING, priority = 100)
     public void onConnectStatusEvent(ConnectStatusEvent event) {
@@ -98,8 +95,7 @@ public class ChooseFunctionActivity extends BaseActivity {
     }
 
     public void onDFU(View view) {
-        if (isWindowLocked())
-            return;
+        if (isWindowLocked()) return;
         chooseFirmwareFile();
     }
 

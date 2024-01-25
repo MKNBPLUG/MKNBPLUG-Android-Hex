@@ -10,7 +10,7 @@ import com.moko.ble.lib.utils.MokoUtils;
 import com.moko.mknbplughex.AppConstants;
 import com.moko.mknbplughex.R;
 import com.moko.mknbplughex.base.BaseActivity;
-import com.moko.mknbplughex.databinding.ActivityLoadStatusNotifyBinding;
+import com.moko.mknbplughex.databinding.ActivityResetByButtonBinding;
 import com.moko.mknbplughex.entity.MokoDevice;
 import com.moko.mknbplughex.utils.SPUtils;
 import com.moko.mknbplughex.utils.ToastUtils;
@@ -26,28 +26,70 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.Arrays;
 
-public class LoadStatusNotifyActivity extends BaseActivity<ActivityLoadStatusNotifyBinding> {
-    private MQTTConfig appMqttConfig;
+/**
+ * @author: jun.liu
+ * @date: 2023/7/10 10:38
+ * @des:
+ */
+public class ResetByButtonActivity extends BaseActivity<ActivityResetByButtonBinding> {
     private MokoDevice mMokoDevice;
+    private MQTTConfig appMqttConfig;
     private Handler mHandler;
+    private int resetType;
+
+    @Override
+    protected ActivityResetByButtonBinding getViewBinding() {
+        return ActivityResetByButtonBinding.inflate(getLayoutInflater());
+    }
 
     @Override
     protected void onCreate() {
+        if (getIntent().getExtras() != null) {
+            mMokoDevice = (MokoDevice) getIntent().getSerializableExtra(AppConstants.EXTRA_KEY_DEVICE);
+        }
+        mHandler = new Handler(Looper.getMainLooper());
         String mqttConfigAppStr = SPUtils.getStringValue(this, AppConstants.SP_KEY_MQTT_CONFIG_APP, "");
         appMqttConfig = new Gson().fromJson(mqttConfigAppStr, MQTTConfig.class);
-        mMokoDevice = (MokoDevice) getIntent().getSerializableExtra(AppConstants.EXTRA_KEY_DEVICE);
-        mHandler = new Handler(Looper.getMainLooper());
+        //首先读取设备的状态
         showLoadingProgressDialog();
         mHandler.postDelayed(() -> {
             dismissLoadingProgressDialog();
             finish();
         }, 30 * 1000);
-        getLoadStatusNotify();
+        getResetByButton();
+        mBind.imgMinute.setOnClickListener(v -> {
+            if (resetType == 0) return;
+            resetType = 0;
+            setResetByButton(0);
+        });
+        mBind.imgAnyTime.setOnClickListener(v -> {
+            if (resetType == 1) return;
+            resetType = 1;
+            setResetByButton(1);
+        });
     }
 
-    @Override
-    protected ActivityLoadStatusNotifyBinding getViewBinding() {
-        return ActivityLoadStatusNotifyBinding.inflate(getLayoutInflater());
+    private void setResetByButton(int type) {
+        showLoadingProgressDialog();
+        mHandler.postDelayed(() -> {
+            dismissLoadingProgressDialog();
+            finish();
+        }, 30 * 1000);
+        byte[] message = MQTTMessageAssembler.assembleWriteResetByButton(mMokoDevice.mac, type);
+        try {
+            MQTTSupport.getInstance().publish(getTopic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void getResetByButton() {
+        byte[] message = MQTTMessageAssembler.assembleReadResetByButton(mMokoDevice.mac);
+        try {
+            MQTTSupport.getInstance().publish(getTopic(), message, appMqttConfig.qos);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -65,73 +107,35 @@ public class LoadStatusNotifyActivity extends BaseActivity<ActivityLoadStatusNot
         if (header != 0xED) return;
         if (!mMokoDevice.mac.equalsIgnoreCase(deviceId)) return;
         mMokoDevice.isOnline = true;
-        if (cmd == MQTTConstants.MSG_ID_LOAD_NOTIFY_ENABLE && flag == 0) {
+        if (cmd == MQTTConstants.MSG_ID_RESET_BY_BUTTON && flag == 0) {
+            //读取设备工作模式
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 2) return;
-            mBind.cbLoadStartNotify.setChecked(data[0] == 1);
-            mBind.cbLoadStopNotify.setChecked(data[1] == 1);
+            if (dataLength != 1) {
+                ToastUtils.showToast(this, "fail");
+                finish();
+                return;
+            }
+            setImgType(data[0]);
+            resetType = data[0];
         }
-        if (cmd == MQTTConstants.MSG_ID_LOAD_NOTIFY_ENABLE && flag == 1) {
+        if (cmd == MQTTConstants.MSG_ID_RESET_BY_BUTTON && flag == 1) {
             if (mHandler.hasMessages(0)) {
                 dismissLoadingProgressDialog();
                 mHandler.removeMessages(0);
             }
-            if (dataLength != 1) return;
-            if (data[0] == 0) {
+            if (dataLength != 1 || data[0] == 0) {
                 ToastUtils.showToast(this, "Set up failed");
                 return;
             }
             ToastUtils.showToast(this, "Set up succeed");
-        }
-        if (cmd == MQTTConstants.NOTIFY_MSG_ID_OVERLOAD_OCCUR
-                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_VOLTAGE_OCCUR
-                || cmd == MQTTConstants.NOTIFY_MSG_ID_UNDER_VOLTAGE_OCCUR
-                || cmd == MQTTConstants.NOTIFY_MSG_ID_OVER_CURRENT_OCCUR) {
-            if (dataLength != 6) return;
-            if (data[5] == 1) finish();
+            setImgType(resetType);
         }
     }
 
-    public void onBack(View view) {
-        finish();
-    }
-
-    private void getLoadStatusNotify() {
-        byte[] message = MQTTMessageAssembler.assembleReadLoadStatusNotify(mMokoDevice.mac);
-        try {
-            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void onSave(View view) {
-        if (isWindowLocked()) return;
-        if (!MQTTSupport.getInstance().isConnected()) {
-            ToastUtils.showToast(this, R.string.network_error);
-            return;
-        }
-        mHandler.postDelayed(() -> {
-            dismissLoadingProgressDialog();
-            ToastUtils.showToast(this, "Set up failed");
-        }, 30 * 1000);
-        showLoadingProgressDialog();
-        setLoadStatusNotify();
-    }
-
-    private void setLoadStatusNotify() {
-        byte[] message = MQTTMessageAssembler.assembleWriteLoadStatusNotify(mMokoDevice.mac, mBind.cbLoadStartNotify.isChecked() ? 1 : 0, mBind.cbLoadStopNotify.isChecked() ? 1 : 0);
-        try {
-            MQTTSupport.getInstance().publish(getAppTopTic(), message, appMqttConfig.qos);
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String getAppTopTic() {
+    private String getTopic() {
         String appTopic;
         if (TextUtils.isEmpty(appMqttConfig.topicPublish)) {
             appTopic = mMokoDevice.topicSubscribe;
@@ -139,5 +143,19 @@ public class LoadStatusNotifyActivity extends BaseActivity<ActivityLoadStatusNot
             appTopic = appMqttConfig.topicPublish;
         }
         return appTopic;
+    }
+
+    private void setImgType(int type) {
+        if (type == 1) {
+            mBind.imgMinute.setImageResource(R.drawable.checkbox_close);
+            mBind.imgAnyTime.setImageResource(R.drawable.checkbox_open);
+        } else {
+            mBind.imgMinute.setImageResource(R.drawable.checkbox_open);
+            mBind.imgAnyTime.setImageResource(R.drawable.checkbox_close);
+        }
+    }
+
+    public void onBack(View view) {
+        finish();
     }
 }

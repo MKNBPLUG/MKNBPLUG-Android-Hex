@@ -20,6 +20,9 @@ public class MQTTConstants {
     public static final int MSG_ID_POWER_PROTECT = 0x10;
     public static final int MSG_ID_CONNECTION_TIMEOUT = 0x11;
     public static final int MSG_ID_BUTTON_CONTROL_ENABLE = 0x12;
+    public static final int MSG_ID_RESET_BY_BUTTON = 0x13;
+    public static final int MSG_ID_INPUT_POWER_STATUS = 0x14;
+    public static final int MSG_ID_READ_DEVICE_TYPE = 0x15;
 
     public static final int CONFIG_MSG_ID_CLEAR_OVERLOAD_PROTECTION = 0x21;
     public static final int CONFIG_MSG_ID_CLEAR_OVER_VOLTAGE_PROTECTION = 0x22;
@@ -39,7 +42,7 @@ public class MQTTConstants {
     public static final int READ_MSG_ID_ENERGY_DAILY = 0x30;
     public static final int READ_MSG_ID_ENERGY_HOURLY = 0x31;
     // device info
-    public static final int READ_MSG_ID_DEVICE_TYPE = 0x32;
+    public static final int READ_MSG_ID_DEVICE_STANDARD = 0x32;
     public static final int READ_MSG_ID_MANUFACTURER = 0x33;
     public static final int READ_MSG_ID_PRODUCT_MODEL = 0x34;
     public static final int READ_MSG_ID_HARDWARE_VERSION = 0x35;

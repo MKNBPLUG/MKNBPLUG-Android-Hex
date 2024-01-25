@@ -189,7 +189,7 @@ public class MQTTSupport {
 //                            XLog.e(errorReport.toString());
 //                        }
 //                        break;
-                    case 1:
+                    case 2:
                         // 单向验证
                         try {
                             connOpts.setSocketFactory(getSingleSocketFactory(mqttConfig.caPath));
@@ -209,7 +209,7 @@ public class MQTTSupport {
                             XLog.e(errorReport.toString());
                         }
                         break;
-                    case 2:
+                    case 3:
                         // 双向验证
                         try {
                             connOpts.setSocketFactory(getSocketFactory(mqttConfig.caPath, mqttConfig.clientKeyPath, mqttConfig.clientCertPath));
